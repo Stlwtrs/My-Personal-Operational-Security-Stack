@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint shell scripts
+        run: shellcheck --severity=warning scripts/*.sh
+
+  markdown:
+    name: Markdown lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Run markdownlint
+        run: npx --yes markdownlint-cli@0.49.0 "**/*.md"
+
+  links-and-configs:
+    name: Internal links and config validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check relative links and anchors
+        run: python3 scripts/check_links.py
+      - name: Validate JSON configs
+        run: |
+          for f in configs/*/*.json; do
+            [ -f "$f" ] || continue
+            python3 -m json.tool "$f" > /dev/null && echo "valid: $f"
+          done
