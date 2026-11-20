@@ -1,91 +1,95 @@
-# Cryptographic Assets & Privacy Using *Monero*
+# Cryptographic Privacy with Monero
 
-**Threat Mitigated:** Blockchain analysis, transaction graph tracing, address linking to real identity, and network level surveillance.
+| | |
+| --- | --- |
+| **Layer** | 5 · Financial Privacy |
+| **Status** | ✅ Implemented |
+| **Threats mitigated** | Blockchain analysis, transaction-graph tracing, linking addresses to real identity, IP-level transaction tracing |
+| **MITRE ATT&CK** | N/A (financial surveillance rather than an intrusion technique) |
+| **Last reviewed** | 2026-11-20 |
 
-## Why This Is So Important Especially
+## Why this control exists
 
-Bitcoin is often mistaken for an anonymous and fully private cryptocurrency, but it is actually a *psuedonymous* transparent ledger. Every transaction ever made on the Bitcoin ledger ever made is made public. If your wallet address is ever linked to your real identity, like for example through a KYC crypto exchange, anyone can trace your entire financial history backward and forward using a method called *chain analysis heuristics*. 
+Bitcoin is often mistaken for an anonymous currency, but it is a **pseudonymous, fully transparent ledger**. Every transaction ever made is public. Once any address is linked to a real identity, for example through a KYC exchange, anyone can trace that person's financial history forward and backward.
 
-Firms such as Chainalysis use algorithms to analyze the public ledger. A common example of this is the *Common-Input-Ownership* heuristic. This is where if a transaction has multiple inputs, the algorithm will automatically assume that they all belong to the same wallet. By clustering these addresses together, they can build a massive graph of the wallet's spending habits, the wallet's associates, and the wallet's net worth, and in the worst case scenario, back to your real identity.
+Blockchain analytics firms such as Chainalysis cluster addresses with heuristics. A classic one is the **common-input-ownership heuristic:** if a transaction spends several inputs, they probably belong to the same wallet. Clustering builds a graph of a wallet's spending habits, counterparties, and balance, and in the worst case connects it back to a person.
 
-For true financial privacy, I personally use **Monero(XMR)**. Unlike Bitcoin, Monero is *private by default*. It uses advanced cryptography to obscure the sender, the receiver, and the amount of every transaction, while still allowing the network to verify the transaction is valid.
+**Monero (XMR)** is private by default. It hides the **sender**, the **receiver**, and the **amount** of every transaction, while still letting the network verify that each transaction is valid.
 
-## Implementation *(The Underlying Technology)*
+## How it works
 
-Monero achieves its privacy through four core technological innovations *(As of 10/30/26 the day I am writing this documentation)*:
+The descriptions below reflect Monero's protocol as of **November 2026**.
 
-### 1. Stealth Addresses *(Hiding the Receiver)*
+### 1. Stealth addresses (hiding the receiver)
 
-On Bitcoin's blockchain, you can send funds to a static address, for example *bc1q...*. On Monero's blockchain you do the same thing as you also are able to send your funds to a static address, although you never receive your funds there.
+I can publish a single Monero address, but funds never actually arrive at it on-chain.
 
-*  **The Math:** When someone sends you XMR, their wallet generates a random secret number, multiplies it by your public view key using *ECDH(Elliptic Curve Diffie-Hellman)*, and then combines it with your public spend key.
+- **The math:** a Monero address contains two public keys, a view key **A** and a spend key **B**. For each payment, the sender picks a random scalar *r*, publishes **R = rG** in the transaction, and derives a one-time output key:
+  **P = H<sub>s</sub>(rA)·G + B**
+  Because *rA = aR* (an elliptic-curve Diffie-Hellman exchange), only I, holding the private view key *a*, can recognize **P** as mine, and only I, holding the private spend key, can spend it.
+- **The result:** every payment goes to a fresh, unlinkable one-time address. Outside observers cannot tell that two payments went to the same recipient.
 
-*  **The Result Of This:** This will generate a unique, one time public address for just that specific transaction. The sender will send the funds there, and only you can derive the private key from that transaction to spend the sent cryptocurrency. This makes address reuse impossible and also prevents outside observers from linking multiple transactions to the same recipient.
+### 2. Ring signatures (hiding the sender)
 
-### 2. Ring Signatures *(Hiding The Sender)*
+When I spend an output, I do not sign with just my own key.
 
-When you spend Monero, you don't just sign a transaction with your key. You create a "ring" of possible signers to further obfuscate your identity.
+- **The math:** the wallet selects **15 decoy outputs** from the blockchain and combines them with my real output into a **ring of 16**. A ring signature proves that *one* member of the ring authorized the spend without revealing which one.
+- **Preventing double-spends:** each spend also publishes a **key image**, a value that is unique to the real output but cannot be linked to it. If the same output is ever spent twice, the duplicate key image gives it away.
 
-*  **The Math:**  The protocol pulls 16 decoy outputs from the blockchain to get this obfuscation done. This means your real output will be mixed up with 15 other decoys, making your transaction much more private.
+### 2.1 The future: FCMP++ (full-chain membership proofs)
 
-*  **The Result:** A cryptographic ring signature is created, proving that one of the 16 keys did indeed sign the transaction, but it is mathematically impossible to tell which one did from an outside observer.
+A ring of 16 is strong but still a *bounded* anonymity set, and statistical analysis over time can sometimes narrow down the real output. **FCMP++** replaces rings entirely: the spender proves in zero knowledge that their output is one of **all outputs on the blockchain** (on the order of 150 million).
 
-### 2.1 The Future of Ring Signatures *FCMP++(Full Chain Membership Proofs)*
+**Status (November 2026):** FCMP++ is **not on mainnet**. A test network ("stressnet") forked to FCMP++ on October 5, 2026. There is **no official mainnet fork date**; a developer's non-binding working draft has pointed to activation around early 2027, but those dates have moved before. The upgrade also brings the new **CARROT** addressing scheme.
 
-While the current ring size of 16 provides extremely strong privacy, it is still a bounded anonymity set. Statistical analysis overtime can potentially narrow down the real output to just you. To solve this problem permanently, the Monero developers are currently working to deploy something known as **FCMP++**.
+### 3. RingCT (hiding the amount)
 
-*  **The Shift:** FCMP++ replaces fixed size ring signatures entirely. Instead of proving you own 1 out of 16 outputs, you generate a *zero knowledge proof* that your output exists somewhere within the **entire set of all historical Monero outputs**(which currently as of 10/30/26 is well over 150 million).
+Early Monero hid senders but not amounts. **Ring Confidential Transactions (RingCT)** fixed that.
 
-*  **The Impact:** The anonymity set jumps from 16 all the way to the entire blockchain. An outside observer cannot even begin to guess which output is the real one because every single transaction in the blockchain's history is a potential decoy.
+- **The math:** amounts are hidden in **Pedersen commitments,** which hide a value but still let the network check that inputs equal outputs plus the fee, so no coins are created from nothing.
+- **Range proofs:** to prove that the hidden amounts are not negative (which would allow inflation), Monero uses **Bulletproofs+**, a compact zero-knowledge range proof adopted in 2022, replacing the original Bulletproofs.
 
-*  **Status of Development:** As of late 2026,FCMP++ is in an active beta stressnet testing phase alongside the CARROT address upgrade. A mainnet hard fork is targeted for the near future once testing and audits are officially completed and successful.
+### 4. Dandelion++ (hiding the source IP)
 
-### 3. RingCT *(Hiding The Amount)*
+In most cryptocurrencies, a node broadcasts a new transaction to all its peers at once (a "gossip" protocol). That makes it relatively easy for a well-connected observer to guess which IP address a transaction came from.
 
-Historically, ring signatures hid the sender yes, but the amount was still visible. **RingCT(Ring Confidential Transactions)** was introduced to solve this exact conundrum and hide the amount.
+- **How it works:** in the **stem** phase, a transaction is passed along a single path from node to node, with a small chance at each hop of switching to the **fluff** phase, where it is broadcast normally.
+- **The result:** by the time the transaction reaches the public mempool, its origin is obscured by several hops, similar in spirit to how Tor obscures your IP while browsing.
 
-*  **The Math:** It uses a strategy to do this called **Pedersen Commitments**, which allow a user to commit to a value(the amount) without revealing it to any outside observers, while still allowing the network to verify that the inputs sum to the outputs, enabling the transaction to be verifiable still.
+## Fungibility
 
-*  **Bulletproofs:** To prevent the transaction from bloating due to this obfuscation, Monero uses Bulletproofs(a type of zero knowledge proofs) to prove that the hidden amounts are valid without revealing the actual numbers for the transaction.
+Fungibility means every unit of a currency is interchangeable with every other (1 XMR = 1 XMR). Because Bitcoin's history is public, coins linked to a past hack can be "tainted" and refused by exchanges, so not all bitcoins are equal. Monero's history is private, so every XMR is indistinguishable from every other, which makes it the closest thing to digital cash available today.
 
-### 4. Dandelion++ *(Hiding The Source IP)*
+## My implementation
 
-Most cryptocurrencies use a *gossip protocol* where nodes will broadcast transactions to all other peers. This makes it trivial for an adversary to trace the transaction back to the originating IP address in turn. Monero stops such a practice by using a protocol called **Dandelion++**.
+- XMR is held in the official Monero GUI wallet, used only on [Tails](./tails-usb.md).
+- Coins are acquired without KYC (see [P2P Exchanges and Self-Mining](./p2p-exchanges.md)).
+- I spend XMR directly with privacy-respecting services, for example to pay for my [Mullvad VPN](../03-Network-Privacy/vpn.md) account.
 
-*  **The Math:** Dandelion++ changes the propagation of such info. The transaction enters the "stem" phase, where it is passed in a straight line from node to node with a small probability of "fluffing"(broadcasting the transaction to the wider network) on each consecutive hop.
+## Trade-offs
 
-*  **The Result:** By the time the transaction reaches the public mempool the "fluff phase" occurs, meaning the original IP address for the transaction has been completely obscured through multiple hops. It is extremely similar to how the Tor Network functions except instead of giving you browsing privacy this function enables the user to receive financial privacy.
+- **Size.** Ring signatures, commitments, and range proofs make Monero transactions much larger than Bitcoin's, so the blockchain is heavier to store and sync.
+- **Regulatory pressure and liquidity.** Binance delisted Monero in February 2024, Kraken ended XMR support for European Economic Area clients later that year, and the EU's anti-money-laundering regulation is expected to stop regulated EU crypto providers from handling privacy coins from 2027. Buying and selling XMR keeps getting harder, which is part of why I acquire it without exchanges.
 
-## The Concept of Fungibility
+## Limitations and residual risk
 
-Fungibility means that one unit of a specified currency is indistinguishable to another *(1XMR=1XMR for example)*. Because Bitcoin is a transparent blockchain, if a specific Bitcoin was used in a hack 5 years ago for example an exchange may blacklist that Bitcoin, making Bitcoin fundamentally not a fungible currency which is one of the most important aspects of a currency as a whole. 
+- **Network-level privacy depends on how you connect.** Connecting a wallet to a malicious remote node, or "spy nodes" that log IP addresses, can leak metadata. I connect over Tor (via Tails), and running your own node is better still.
+- **Behavior can undo cryptography.** Moving coins straight from a KYC exchange to a merchant, or sending unusual amounts at predictable times, creates links that no protocol can hide.
+- **Ring signatures are probabilistic privacy** until FCMP++ ships.
 
-Because Monero is private, every XMR in turn is completely identical and has no traceable history. This makes it the only true *digital cash* as of present day.
+## Verdict
 
-## The Trade Off
+For my threat model, cryptographically enforced privacy is worth the larger storage requirements and the growing friction of acquiring XMR.
 
-*  **Size:** Because of the complex cryptography such as **RingCT** for example, Monero transactions are significantly larger than Bitcoin Transactions, which makes the blockchain in turn much larger and heavier to sync.
+## Learn more
 
-## The Verdict
+- **[The Monero Project](https://www.getmonero.org/)**: official website and documentation
+- **[Monero Research Lab](https://www.getmonero.org/resources/research-lab/)**: the research behind RingCT, FCMP++, and more
+- **[Monero source code (GitHub)](https://github.com/monero-project/monero)**
+- **[Monero Outreach](https://www.monerooutreach.org/)**: community education
 
-For my specified threat model, cryptographically sound privacy is absolutely worth the trouble to maintain such as the additional storage requirements I need to store my wallet.
+Monero is often dismissed as "crypto for criminals." The same was said about Bitcoin before it went mainstream. In reality, Monero is used by journalists, activists, and ordinary people who do not want their entire financial lives tracked and monetized.
 
-## Join The Monero Circular Economy Yourself
+---
 
-In a world where financial surveillance is becoming the default, Monero represents a critical tool for human rights and financial sovereignty.
-
-It is not just "crypto for criminals"*(a common media trope against monero, keep in mind the same thing was said before Bitcoin became mainstream due to its pseudonymous nature)*, it is the only decentralized digital cash that provides the same level of privacy as physical cash. It is used by journalists, activists, and ordinary citizens who simply do not want their entire financial lives tracked and monetized by data brokers or corporations.
-
-If you want to learn more about the underlying technology or support the project, here are the official resources you can dig through:
-
-*  **[The Monero Project](https://www.getmonero.org/)**
-*  *The official website and documentation.*
-
-*  **[Monero Research Lab (MRL)](https://www.getmonero.org/resources/research-lab/)**
-*  *The cryptographers and researchers behind the protocol which is a great place to read the original whitepapers on protocols such as RingCT and FCMP++ for example.*
-
-*  **[Monero Github Repository](https://github.com/monero-project/monero)**
-*  *The open source codebase for the project.*
-
-*  **[Monero Outreach](https://www.monerooutreach.org)**
-*  *A community driven workgroup dedicated to educating the public about Monero.*
+[← Layer 5 overview](./README.md) · [Stack overview](../README.md)
