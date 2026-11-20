@@ -1,35 +1,65 @@
-# GNU IceCat
+# GNU IceCat with LibreJS
 
-**Threat Mitigation:** Non-free Javascript execution, browser fingerprinting, proprietary tracking scripts, and supply chain attacks via browser code.
+| | |
+| --- | --- |
+| **Layer** | 3 · Network Privacy |
+| **Status** | ✅ Implemented (daily browser) |
+| **Threats mitigated** | Untrusted JavaScript (tracking, fingerprinting, cryptojacking, drive-by exploits), browser telemetry |
+| **MITRE ATT&CK** | [T1189](https://attack.mitre.org/techniques/T1189/) Drive-by Compromise · [T1566](https://attack.mitre.org/techniques/T1566/) Phishing |
+| **Last reviewed** | 2026-11-20 |
 
-## Why Is This So Important?
+## Why this control exists
 
-When you visit a modern website such as Chrome or standard Firefox, you are executing hundreds of pieces of proprietary JavaScript blindly. Most of these scripts are harmless, but a select few are used to aggressively track your activity, fingerprint your device, or even *cryptojack* you in some scenarios.
+Visiting a typical modern website, in Chrome or a stock Firefox, means running dozens of third-party JavaScript files without seeing any of them. Most are harmless, but some exist to track activity, fingerprint the device, or even mine cryptocurrency in your browser (*cryptojacking*). JavaScript is also the main delivery mechanism for browser exploits.
 
-I use **GNU IceCat**, which is the GNU project's fork of Firefox, with **LibreJS** enabled. IceCat by default strips out all non-free binaries and telemetry. LibreJS takes it even a step further than that, as it blocks **ALL** non-trivial JavaScript unless the script has a free software license embedded inside of it, or unless I explicitly whitelist the code and give it the go ahead to execute.
+**GNU IceCat** is the GNU Project's version of Firefox ESR (Extended Support Release). It removes non-free components and telemetry and changes many defaults for privacy. It ships with **LibreJS**, which blocks non-trivial JavaScript unless the script carries a recognized free-software license or I explicitly allow it. Current IceCat releases also bundle **JShelter** (see [Privacy Extensions](./privacy-extensions.md)).
 
-## Implementation
+## How it works
 
-*   **The Browser:** GNU IceCat
+- **Default deny for scripts.** Pages load with only trivial or free-licensed JavaScript.
+- **Explicit trust.** If a site I trust needs proprietary JavaScript (GitHub, for example), I allow that specific site through LibreJS.
 
-*   **The Extension:** LibreJS (which comes bundled with IceCat by default)
+## My implementation
 
-*   **The Philosophy:** "Trust by explicit permission." If a website needs to run proprietary JavaScript to function, much like *GitHub*, I have to manually whitelist that specific domain so it can function.
+| Component | Choice |
+| --- | --- |
+| Browser | GNU IceCat |
+| Script control | LibreJS (bundled), per-site allow list |
+| Network path | Always behind [Mullvad VPN](./vpn.md) |
+| Extensions | See [Privacy Extensions](./privacy-extensions.md) |
 
-## The Phishing Trap For Malicious Actors
+## A useful side effect: phishing pages look broken
 
-Although not my intention when downloading this browser, this setup also has an unexpected security benefit that comes along with it, **it breaks phishing sites**.
+This was not the reason I chose IceCat, but it has turned out to be useful. Phishing sites often reuse a real site's JavaScript so that the clone looks authentic. Because I have allowed scripts only on the **real** domain, a clone on a lookalike domain loads with its scripts blocked and its layout broken.
 
-Phishing sites are usually just cheap clones of the real websites they are trying to imitate to trick you. When an attacker clones GitHub for example, they often use the site's real proprietary JavaScript to make it look as authentic as possible.When I visit a site in the IceCat browser, the JavaScript is automatically blocked because it is not whitelisted. This makes the page look scattered and broken revealing its malicious nature the minute you enter it.
+If a link claiming to be GitHub opens with the layout obliterated, that is an immediate red flag before I type anything.
 
-If I were to ever click a link claiming to be GitHub and the layout is obliterated, I instantly know it is a fake site off the get go before I even have the chance to type my password in.
+**Caveat:** this is a helpful *tell*, not a control. Many phishing kits are plain HTML and CSS forms that render fine without JavaScript. The real anti-phishing controls in my stack are a password manager that only autofills on the exact domain it saved, and phishing-resistant MFA (see [Layer 4](../04-Identity-Credentials/README.md)).
 
-## The Trade Offs
+## Verification
 
-*  **What I like to call "The Bajillion Scripts Conundrum":** Modern web apps like GitHub, YouTube, or banking sites load scripts from multiple CDNs. You will spend a lot of time clicking the LibreJS icon in the toolbar to whitelist the domains before the site works good enough to be usable.
+Open a script-heavy site that is not on your allow list. The LibreJS toolbar icon should report blocked scripts, and the site should load degraded until you allow it.
 
-*  **Broken Functionality:** Some websites simply will not work without proprietary JavaScript whether you like it or not. For those specific websites, I switch to the **Mullvad Browser**.
+## Trade-offs
 
-## The Verdict
+- **The "bajillion scripts" problem.** Modern web apps like GitHub, YouTube, and banking sites load scripts from many domains and CDNs. Getting them working means a lot of clicking in LibreJS.
+- **Some sites simply will not work** without proprietary JavaScript. For those, I switch to [Mullvad Browser](./mullvad-browser.md).
 
-It is extremely high friction, but for daily clear net browsing, the piece of mind of knowing exactly what code my browser is executing is worth the additional setup time. In fact I am using the browser right now as I write this documentation!
+## Limitations and residual risk
+
+- **Patch cadence.** IceCat is rebased on Firefox ESR by a small volunteer team, and its releases have historically lagged behind Mozilla's ESR security updates. A browser is the most exposed program on any system, so I keep IceCat current and treat any lag as a known risk.
+- **Packaging.** On Arch, IceCat is not in the official repositories. It comes from the AUR or is built from source, so the [AUR caveats](../02-Operating-System/arch-linux.md#limitations-and-residual-risk) apply.
+- **Fingerprint uniqueness.** A heavily customized browser stands out. IceCat is for **control** over what runs; [Mullvad Browser](./mullvad-browser.md) is for **blending in**.
+
+## Verdict
+
+It is high friction, but for everyday browsing, knowing exactly what code my browser executes is worth the setup time. I am using it right now to write this documentation.
+
+## References
+
+- [GNU IceCat](https://www.gnu.org/software/gnuzilla/)
+- [GNU LibreJS](https://www.gnu.org/software/librejs/)
+
+---
+
+[← Layer 3 overview](./README.md) · [Stack overview](../README.md)
