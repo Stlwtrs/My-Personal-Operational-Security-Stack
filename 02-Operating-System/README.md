@@ -1,24 +1,39 @@
 # Layer 2: Operating System
 
-**Adversary:** Local privilege escalation, malware execution, kernel level exploits, and system tampering overall.
+**Adversaries:** malware execution, local privilege escalation, kernel exploits, and system tampering.
 
-The operating system in which you use is the foundation of everything you do on your system. If the OS you use is bloated, unpatched, or too trusting by default, every application running on top of it is at risk for exploitation by a malicious actor.
+**Goal:** a minimal, hardened, and recoverable system, so a compromised application has as little reach as possible and a bad update is never fatal.
 
-My goal for this layer is kernel level hardening and system immutability. I want to shrink the attack surface as much as I possibly can to ensure the system is resilient to tampering and guarantee that I can recover from a catastrophic failure or compromise while still maintaining my system's usability.
+The operating system is the foundation everything else runs on. If it is bloated, unpatched, or too trusting by default, every application on top of it is exposed. This layer shrinks the attack surface (install only what I need), hardens the kernel (stricter memory protections and fewer information leaks), confines applications (mandatory access control), and keeps a fast path back to a known-good state (snapshots).
 
-# Documentation in this Section
+## Controls in this layer
 
-*  **[Arch Linux](./arch-linux.md/)**
-*  *Why I chose a rolling release, minimal install distribution as my daily driver.*
+| Control | What it does | Status |
+| --- | --- | --- |
+| [Arch Linux](./arch-linux.md) | Minimal, rolling-release base: nothing installed that I did not choose | ✅ Implemented |
+| [`linux-hardened` kernel](./linux-hardened.md) | Kernel with extra exploit mitigations and stricter defaults | ✅ Implemented |
+| [Mandatory Access Control (AppArmor)](./apparmor-selinux.md) | Confines profiled applications to the files and capabilities they need | ✅ Implemented |
+| [Sysctl kernel hardening](./sysctl-hardening.md) | Restricts kernel information leaks and cross-process inspection | ✅ Implemented |
+| [Btrfs snapshots and recovery](./btrfs-snapshots.md) | Fast rollback after a bad update or user error | ✅ Implemented |
 
-*  **[The "linux-hardened" kernel](./linux-hardened.md/)**
-*  *Trading out of the box driver compatibility for stricter memory protections and security patches to ensure my system is as safe as can be.*
+## Defense in depth at the OS layer
 
-*  **[Mandatory Acces Control(MAC)](./apparmor-selinux.md/)**
-*  *Confining my system's applications to the absolute minimum privileges they need to operate and function correctly.*
+```mermaid
+flowchart TB
+    A[Attacker gets code execution<br/>in an application] --> B{AppArmor profile?}
+    B -- confined --> C[Blocked from files and capabilities<br/>outside its profile]
+    B -- unconfined --> D[Runs with my user's permissions]
+    D --> E{Privilege escalation attempt}
+    E --> F[Hardened kernel + sysctl:<br/>no kernel pointers, no dmesg,<br/>restricted ptrace and BPF]
+    F --> G[Exploit is harder to build and less reliable]
+```
 
-*  **[Sysctl Kernel Hardening](./sysctl-hardening.md/)**
-*  *Using kernel parameters to restrict information leaks.*
+## Residual risk for this layer
 
-*  **[Btrfs Snapshots & Recovery](./btrfs-snapshots.md/)**
-*  *Ensuring system availability and rollbacks after a bad update or compromise.*
+- **Only profiled applications are confined.** Programs without an AppArmor profile run unconfined (see [MAC](./apparmor-selinux.md#limitations-and-residual-risk)).
+- **The AUR is a supply-chain risk.** User-submitted packages are not vetted (see [Arch Linux](./arch-linux.md#limitations-and-residual-risk)).
+- **Snapshots are not a recovery plan for a root compromise.** A root-level attacker can delete them (see [Btrfs](./btrfs-snapshots.md#snapshots-and-a-real-compromise)).
+
+---
+
+[← Layer 1: Physical Security](../01-Physical-Security/README.md) · [Stack overview](../README.md) · [Layer 3: Network Privacy →](../03-Network-Privacy/README.md)
