@@ -1,0 +1,20 @@
+# Excerpt of /etc/usbguard/usbguard-daemon.conf
+# Documented in 01-Physical-Security/usbguard.md
+# Only the settings relevant to a default-deny policy are shown; keep the rest of
+# your distribution's default file.
+
+# Where the allow list lives (owned by root, mode 0600)
+RuleFile=/etc/usbguard/rules.conf
+
+# Anything that does not match a rule is blocked
+ImplicitPolicyTarget=block
+
+# Devices already connected at daemon start are checked against the rules too
+PresentDevicePolicy=apply-policy
+
+# Newly inserted devices are checked against the rules
+InsertedDevicePolicy=apply-policy
+
+# Restrict who may talk to the daemon over IPC (adjust to your admin user/group)
+IPCAllowedUsers=root
+IPCAllowedGroups=wheel
