@@ -1,32 +1,71 @@
-# My No Biometrics Policy
+# No-Biometrics Policy
 
-**Threat Mitigated:** Physical coercion, unauthorized device unlocking, and legal bypasses of your 5th amendment rights. (If you reside in the US)
+| | |
+| --- | --- |
+| **Layer** | 4 · Identity and Credentials |
+| **Status** | ✅ Implemented |
+| **Threats mitigated** | Forced unlocking through physical coercion; compelled biometric unlocking (US legal context) |
+| **MITRE ATT&CK** | [T1461](https://attack.mitre.org/techniques/T1461/) Lockscreen Bypass (Mobile) |
+| **Last reviewed** | 2026-11-20 |
 
-## Why this is so important
+> **Not legal advice.** I am a student, not a lawyer. This page describes my reasoning and summarizes publicly reported court decisions in the United States. Laws differ by jurisdiction and change over time.
 
-Biometrics, better known as Face ID, fingerprint scanning, or things adjacent, are marketed as a massive security upgrade to the masses. In reality, they are a **massive convenience upgrade** that actually trades your legal and physical security for a fraction of a second of speed while unlocking said devices and they will actually **downgrade** your devices security.
+## Why this control exists
 
-I personally have completely disabled biometrics on all of my devices which have the option for it. This is my reason why:
+Biometrics (Face ID, Touch ID, fingerprint readers) are marketed as a security upgrade. In practice, they are mostly a **convenience** upgrade, and in two specific situations they are weaker than a strong passcode.
 
-*  **The Legal Loopholes:**
-*   In many jurisdictions, including the US, the law generally will protect you from being forced to reveal a *password* to law enforcement,as it falls under your 5th amendment right against self incrimination or in other words *compelled testimonial communication*. However, courts have repeatedly ruled that police *can* force you to unlock your device using your face or your fingerprint. Your biometrics are considered physical evidence, not testimonial knowledge. By using a passcode instead, you force law enforcement to obtain a warrant and attempt to compel you to give your password over legally, which is a much higher bar to reach. Of course if you are a criminal and you do such practices than I do not condone it at all and you should get caught for your crimes but as a law abiding citizen everyone has the right to privacy, including the right to have the things on their device kept private.
+### 1. The legal angle (United States)
 
-*   **Physical Coercion:** If someone were to physically yank your phone or laptop out of your hands and force it up to your face and you have Face ID on, then that person immediately has access to everything you have on your computer completely destroying your privacy. One thing they cannot do though is force you to type in your 20 character password for instance as that requires much more than just your face. It gives you time to think if you should open it for them, and in turn also gives you the option to refuse.
+The Fifth Amendment protects against *compelled testimonial* self-incrimination. Courts have generally treated revealing a passcode, which is something you know, as testimonial, although even that protection has exceptions (the "foregone conclusion" doctrine) and is not absolute.
 
-*   **Data Leakage:** While companies like Apple for example store biometric data locally in their **Secure Enclave** and not in the cloud, it is still a model of your physical body that you gave over to a big corporation. By not enrolling at all in the first place, you can ensure that no one can ever spoof your biometric data because it physically never existed in the first place.
+For biometrics, the law is **unsettled**, and federal appeals courts disagree:
 
-## Implementation
+- **United States v. Payne (9th Cir., 2024):** forcing a suspect's thumb onto his phone was **not** testimonial, because it was a physical act requiring no thought, like being fingerprinted at booking.
+- **United States v. Brown (D.C. Cir., January 2025):** compelling a defendant to unlock his phone with his thumbprint **was** testimonial, because choosing which finger to use communicated that he controlled the phone and knew how to open it.
 
-*  **iPhone:** Face ID is completely disabled and turned off. The device is secured with an extremely complex password of some varied length, not going to give the exact length away here but it is over 20 characters long.
+That split means whether biometrics are protected can depend on where you are and on the exact facts. A passcode avoids the question: it requires you to *disclose* something, which is the strongest position the law currently recognizes.
 
-*  **Arch Linux Laptop:** No fingerprint reader and/or Face ID is used or installed. The system relies entirely on a hyper complex LUKS password for encryption purposes and a hyper complex user password for the main user on the system.
+As a law-abiding person, this is not about evading anything. I believe everyone has a right to privacy, and I want the strongest legal position available by default.
 
-## The Trade Off
+### 2. Physical coercion
 
-*  **Friction:** I have to type my complex password every time I unlock my phone. I have to do the same for my laptop and other devices, which requires a tad bit of friction when using them.
+If someone grabs my phone and holds it up to my face, Face ID unlocks it instantly. Nobody can force a 20+ character passcode out of me in the same way. A passcode gives me time to think and the option to refuse.
 
-## The Verdict
+### 3. Biometric data itself
 
-Most people are so used to and addicted to convenience that they trade their legal rights for a split second of saved time and they don't even know it. I am willing to endure the friction of typing a password to maintain strict control over my device and my identity.
+Apple stores Face ID and Touch ID data in the device's Secure Enclave, and it is not sent to Apple, so the "a corporation has a model of my face" concern is smaller than it is often made out to be. Still, if I never enroll, there is no biometric template on the device to attack or spoof.
 
+## My implementation
 
+| Device | Configuration |
+| --- | --- |
+| iPhone | Face ID **disabled**; long alphanumeric passcode (20+ characters) |
+| Laptop | No fingerprint reader or camera hardware at all (see [Hardware Selection](../01-Physical-Security/hardware-selection.md)); LUKS passphrase and long user password |
+
+## Verification
+
+- **iPhone:** Settings → Face ID & Passcode → every "Use Face ID For" toggle is off, and no face is enrolled.
+- **Laptop:** `fprintd-list "$USER"` (if `fprintd` is installed) shows no enrolled fingers, and the hardware has no reader.
+
+## Trade-offs
+
+- **Friction.** I type a long passcode every time I unlock my phone and laptop.
+- **Shoulder-surfing exposure.** Typing a passcode in public is riskier than glancing at the phone. This is the classic "watch the passcode, then steal the phone" attack. I counter it by shielding the screen while typing, using a long alphanumeric code that is hard to observe, and following the [privacy-screen](../01-Physical-Security/privacy-screen.md) habits.
+- **Losing some iOS protections.** Apple's *Stolen Device Protection* uses Face ID/Touch ID for its extra checks on sensitive actions. Without biometrics I do not get that layer.
+
+## For readers who keep biometrics
+
+If you keep Face ID or Touch ID, learn your device's quick lockdown gesture. On iPhone, pressing and holding the side button and either volume button until the power-off screen appears forces the passcode on the next unlock. Use it in any situation where you might be forced to unlock.
+
+## Verdict
+
+Most people trade real legal and physical protections for a split second of convenience without realizing it. I would rather type a long passcode and keep full control over my devices.
+
+## References
+
+- [CDT: Circuit split on biometric phone unlocking](https://cdt.org/insights/circuit-court-split-lays-the-groundwork-for-scotus-case-on-biometric-cell-phone-unlocking/)
+- [Apple Platform Security: Face ID and Touch ID](https://support.apple.com/guide/security/face-id-and-touch-id-security-sec067eb0c9e/web)
+
+---
+
+[← Layer 4 overview](./README.md) · [Stack overview](../README.md)
