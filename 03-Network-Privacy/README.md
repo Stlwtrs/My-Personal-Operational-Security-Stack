@@ -1,24 +1,45 @@
-# Layer 3: Network & Privacy
+# Layer 3: Network Privacy
 
-**Adversary:** Internet Service Providers (ISPs), traffic analysis, DNS snooping, and browser fingerprinting.
+**Adversaries:** Internet service providers (ISPs), on-path network observers (for example on public Wi-Fi), traffic analysis, DNS snooping, ad-tech trackers, and browser fingerprinting.
 
-The network is the perimeter of our modern digital world. If my traffic leaves my laptop unencrypted, or if my DNS requests are handled by my ISP, I am essentially broadcasting my digital life to corporations and potential eavesdroppers to my network traffic.
+**Goal:** my ISP learns as little as possible about what I do online, and websites cannot easily recognize me or follow me from one site to another.
 
-This layer is all about **Traffic Obfuscation and Network Sovereignty**. The goal is to ensure my ISP knows as little as possible about what I do online, and that websites I visit can't easily track me across the internet.
+If my traffic leaves the laptop unprotected and my DNS lookups go through my ISP, I am broadcasting a detailed log of my digital life. This layer handles two separate problems:
 
-## Documentation in this Section
+1. **Who can see my traffic** (the network path): VPN and Tor.
+2. **Who can recognize my browser** (the endpoint): browser choice, compartmentalization, and extensions.
 
-*  **[Mullvad VPN](./vpn.md/)**
-*  *Routing all my internet traffic through a privacy first VPN with AI-resistant traffic shaping (DAITA) and double hop routing (MultiHop)*
+A VPN alone does not stop fingerprinting, and a hardened browser alone does not hide traffic from the ISP. They are complementary.
 
-*  **[Tor Browser](./tor-browser.d/)**
-*  *Compartmentalizing high risk or highly private browsing from my clear net activity. (Only if absolutely necessary)*
+## Controls in this layer
 
-*  **[GNU IceCat](./icecat-librejs.md/)**
-*  *Using a hardened, libre software focused browser for daily clear net browsing to block malicious non-free JS on sketchy sites.*
+| Control | What it does | Status |
+| --- | --- | --- |
+| [Mullvad VPN](./vpn.md) | Encrypts all traffic past my ISP; DAITA, Multihop, and DNS-level blocking | ✅ Implemented |
+| [GNU IceCat + LibreJS](./icecat-librejs.md) | Daily browser with default-deny JavaScript | ✅ Implemented |
+| [Mullvad Browser](./mullvad-browser.md) | Fingerprint-uniform browser for sites where IceCat is impractical | ✅ Implemented |
+| [Tor Browser](./tor-browser.md) | Anonymity for high-risk, compartmentalized tasks only | ✅ Implemented (situational) |
+| [Privacy extensions](./privacy-extensions.md) | Content blocking and anti-tracking inside IceCat | ✅ Implemented |
 
-*  **[Mullvad Browser](./mullvad-browser.md/)**
-*  *Using a fingerprint-resistant and privacy focused browser when IceCat is inoperable due to excessive JS usage on a site. Also works extremely well in conjunction with Mullvad VPN*
+## Browser compartmentalization
 
-*  **[Privacy Extensions](./privacy-extensions.md/)**
-*  *The specific privacy and security focused extensions I use in my browsers to block trackers and overall harden my browser.*
+```mermaid
+flowchart LR
+    T{What am I doing?} -->|Everyday browsing,<br/>want script control| I[IceCat + LibreJS<br/>+ extensions]
+    T -->|Site breaks without JS,<br/>want to blend in| M[Mullvad Browser<br/>stock, no extra extensions]
+    T -->|Need anonymity,<br/>no link to my identity| R[Tor Browser<br/>or Tails]
+    I & M --> V[(Mullvad VPN)]
+    R --> N[(Tor network)]
+```
+
+Separating activities across browsers keeps cookies, logins, and fingerprints from bleeding between contexts.
+
+## Residual risk for this layer
+
+- **A VPN shifts trust rather than removing it.** Mullvad can see the same metadata my ISP used to see. I chose them on evidence, not blind faith (see [VPN](./vpn.md)).
+- **My IceCat profile is fingerprintable.** Its extension set makes it relatively unique, and that trade-off is documented in [Privacy Extensions](./privacy-extensions.md#trade-offs).
+- **Logging in links activity to me** no matter which browser or network I use.
+
+---
+
+[← Layer 2: Operating System](../02-Operating-System/README.md) · [Stack overview](../README.md) · [Layer 4: Identity & Credentials →](../04-Identity-Credentials/README.md)
