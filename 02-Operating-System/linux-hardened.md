@@ -1,35 +1,60 @@
-# The *linux-hardened* Kernel
+# The `linux-hardened` Kernel
 
-**Threat Mitigated:** Kernel-level exploits, memory corruption attacks, and information leaks.
+| | |
+| --- | --- |
+| **Layer** | 2 · Operating System |
+| **Status** | ✅ Implemented |
+| **Threats mitigated** | Kernel exploits, memory-corruption attacks, kernel information leaks |
+| **MITRE ATT&CK** | [T1068](https://attack.mitre.org/techniques/T1068/) Exploitation for Privilege Escalation · [T1082](https://attack.mitre.org/techniques/T1082/) System Information Discovery |
+| **Last reviewed** | 2026-11-20 |
 
-## The Why Behind This
+## Why this control exists
 
-The standard Linux kernel is designed for maximum compatibility and performance, this is good for user experience but in some areas it is horrible for security purposes and privacy. Some security features are disabled by default to avoid breaking older software or specific hardware configurations in the base OS.
+The mainline Linux kernel is tuned for compatibility and performance. That is the right default for most users, but it means some security features are off or relaxed so that older software and unusual hardware keep working.
 
-To close these gaps, I took the time to setup the **linux-hardened** kernel. This kernel upgrade is available in the *AUR* and offers a huge list of security upgrades. It is essentially a custom kernel patch that applies aggressive security mitigations directly into the kernel's source code.
+**`linux-hardened`** is a security-focused kernel maintained as a patch set on top of the stable kernel. Arch ships it in its **official repositories** (`pacman -S linux-hardened`); it is not an AUR package. It applies extra exploit mitigations and stricter defaults directly in the kernel.
 
-## The Key Security Features
+## How it works
 
-By switching to this kernel instead of using the default Linux kernel you obtain a multitude of security upgrades, these protections include:
+Examples of what the hardened kernel changes (the exact list evolves with each release):
 
-*  **Stricter Memory Protections:** It enables advanced **Address Space Layout Randomization** or **ASLR** and memory corruption mitigations to make buffer overflow exploits much harder to execute on your system.
+- **Stronger memory-corruption mitigations,** such as higher address space layout randomization (ASLR) entropy and additional heap and slab hardening, which make memory-corruption exploits less reliable.
+- **Restricted kernel information,** for example blocking unprivileged access to the kernel log (`dmesg`) and hiding kernel pointers, so attackers cannot easily learn kernel memory addresses.
+- **Reduced unprivileged attack surface,** such as restricting unprivileged user namespaces and unprivileged BPF, two features that have been the entry point for many local privilege-escalation exploits.
 
-*  **Restricted `dmesg` Access:** By default, it restricts unprivileged users from reading the kernel ring buffer, also called `dmesg`, which prevents attackers from leaking kernel memory addresses.
+## My implementation
 
-*  **`kptr_restrict`:** It hides the kernel pointers from unprivileged processes, making it harder to build reliable privilege escalation exploits on your machine.
+- `linux-hardened` installed from the official Arch repositories and set as the default boot entry.
+- My hardware uses Intel integrated graphics, so I do not depend on out-of-tree GPU drivers.
+- Additional runtime settings are in [Sysctl Kernel Hardening](./sysctl-hardening.md).
 
-## Some Trade Offs
+## Verification
 
-**Hardware Compatibility:** Because the kernel is so strict in this state, some proprietary drivers (looking at you **NVIDIA** *cough* *cough*) or some *out-of-tree* Wi-Fi adapters may fail to compile or load.
+```bash
+uname -r                    # should end in "-hardened"
+pacman -Q linux-hardened    # installed version
+```
 
-**Mitigation:** If you rely on these drivers, you must use the **DKMS** version and ensure your system can rebuild the kernel modules on every update.
+## Trade-offs
 
-## The Verdict
+- **Hardware and driver compatibility.** Proprietary or out-of-tree modules (looking at you, Nvidia) may fail to build or load. If you depend on them, use the DKMS versions and install `linux-hardened-headers` so modules rebuild on every kernel update.
+- **Software that expects unprivileged user namespaces.** Some sandboxing tools and applications rely on them and may need configuration changes or a policy exception.
+- **Slight performance cost** from some mitigations.
 
-For my hardware setup with Intel integrated graphics the linux-hardened kernel runs flawlessly. The peace of mind knowing that the standard kernel exploits are significantly harder to execute is worth the extremely minor maintenance overhead.
+## Limitations and residual risk
 
-## How to Verify it
+- A hardened kernel raises the cost of exploitation; it does not eliminate kernel vulnerabilities.
+- **Keep a fallback kernel.** Having the standard `linux` or `linux-lts` kernel as a second boot entry means a bad hardened-kernel update does not leave the machine unbootable.
 
-You can verify if you have it properly installed by checking the running kernel's version via the command:
+## Verdict
 
-```uname -r```
+With Intel integrated graphics, `linux-hardened` runs flawlessly on my hardware. Knowing that common kernel exploit techniques are significantly harder to pull off is worth the very small maintenance overhead.
+
+## References
+
+- [linux-hardened (GitHub)](https://github.com/anthraxx/linux-hardened)
+- [ArchWiki: Security (Kernel hardening)](https://wiki.archlinux.org/title/Security#Kernel_hardening)
+
+---
+
+[← Layer 2 overview](./README.md) · [Stack overview](../README.md)
