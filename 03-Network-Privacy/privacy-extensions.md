@@ -1,58 +1,62 @@
-# Browser Extensions
+# Privacy and Security Extensions
 
-**Threat Mitigated:** Cross-site tracking, malicious ads or *malvertising*, fingerprinting, and script based exploitation techniques.
+| | |
+| --- | --- |
+| **Layer** | 3 · Network Privacy |
+| **Status** | ✅ Implemented (IceCat profile) |
+| **Threats mitigated** | Cross-site tracking, malvertising, URL tracking parameters, JavaScript fingerprinting, browser-based port scanning |
+| **MITRE ATT&CK** | [T1189](https://attack.mitre.org/techniques/T1189/) Drive-by Compromise |
+| **Last reviewed** | 2026-11-20 |
 
-## Why This Is So Important
+## Why this control exists
 
-Even when using a privacy focused browser like Mullvad Browser or IceCat for instance the average modern day website is hostile. Websites try to load trackers from dozens of different domains, they try to serve you malicious ads that can compromise your machine, and they even use scripts in order to fingerprint your device.
+Even inside a privacy-focused browser, the average website is hostile. Pages try to load trackers from dozens of domains, serve malicious ads (*malvertising*), and run scripts that fingerprint the device. My extensions act as a second filtering layer inside the browser.
 
-For my setup I use a strict, minimal set of extensions that act as a secondary "firewall" inside my browser in a sense. I do not install extensions unless they are a widely audited and serve a specific purpose whether that be for security or privacy or anything else that enhances the web experience.
+**Scope:** this extension set lives in my **IceCat** profile. [Mullvad Browser](./mullvad-browser.md) and [Tor Browser](./tor-browser.md) stay stock on purpose, because adding extensions to them makes their users less uniform and undermines their anti-fingerprinting design.
 
-## Implementation (The Extensions I Use)
+## The extensions I use
 
-*  **uBlock Origin**
-*  *What it does:* This is considered the gold standard for content blocking in my opinion. It blocks ads, trackers, malicious domains, and other malicious scripts from running at the network level. Because of this it is amazing for the security and privacy of the user.
+| Extension | What it does | Notes |
+| --- | --- | --- |
+| **uBlock Origin** | Blocks ads, trackers, and known-malicious domains using filter lists, inside the browser before requests are made | The core of the set. Blocking ads is a security control, not just a cosmetic one: malvertising is a real infection vector. |
+| **LibreJS** | Blocks non-free, non-trivial JavaScript unless I allow it | Bundled with IceCat. See [IceCat](./icecat-librejs.md). |
+| **JShelter** | Wraps JavaScript APIs to reduce fingerprinting and limit risky browser features | Bundled with current IceCat. Uses *farbling*: it slightly randomizes fingerprintable values **per domain and per session**, so the fingerprint each site sees differs and cannot be linked across sites. This is a different strategy from Mullvad Browser's "everyone looks identical." |
+| **ClearURLs** | Strips tracking parameters such as `utm_source` and `fbclid` from links | uBlock Origin can do much of this with URL-tracking filter lists, so there is some overlap. |
+| **Decentraleyes** | Serves common JavaScript libraries (jQuery, Bootstrap, etc.) from a local copy instead of public CDNs | Avoids a request to a third-party CDN for each page. LocalCDN is a more actively developed fork with broader library coverage. |
+| **Privacy Redirect** | Redirects YouTube, X/Twitter, Reddit, and others to privacy-friendly front ends (Invidious, Nitter, Libreddit) | **No longer maintained.** LibRedirect is its maintained successor, and many front-end instances have shut down or moved to forks. |
+| **Total Privacy and Security (TPRB)** | Tightens tracking protections and privacy defaults against known data brokers | A fail-safe for domains that slip past uBlock Origin's lists. |
+| **Privacy Badger** | EFF's tracker blocker | Since October 2020, Privacy Badger no longer learns from your own browsing by default, because local learning could itself be used to fingerprint users. It now relies on a pre-trained list ("Badger Sett") that the EFF updates. Local learning can be re-enabled in its settings. |
+| **Port Authority** | Blocks websites from using your browser to port-scan your computer or local network, and blocks LexisNexis ThreatMetrix tracking scripts | Created after eBay was caught port-scanning visitors in 2020. It is not a general connection monitor or IDS; it targets these two specific abuses. |
 
-*  *Why it matters:* Blocking ads is not just about making the site look prettier. Malvertising or malicious ads is a massive attack vector this prevents. uBlock Origin stops the malicious code from ever reaching your browser to begin with.
+## Verification
 
-*  **LibreJS (Specifically for IceCat)**
-*  *What it does:* It's main purpose is to block non-free or proprietary JavaScript from running on your browser unless specifically whitelisted by the user.
-*  *Why it matters:* As mentioned in the IceCat section prior, this acts as an accidental phishing trap so I know a phishing site immediately when it loads and it acts as a great way to not allow unknown or malicious scripts from running on my machine.
+- **uBlock Origin:** the toolbar badge shows how many requests were blocked on each page.
+- **Port Authority:** test pages linked from its [GitHub repository](https://github.com/ACK-J/Port_Authority) attempt browser-based port scans; blocked attempts appear in the developer tools' Network tab.
+- **Fingerprinting:** compare results at [Cover Your Tracks](https://coveryourtracks.eff.org/) with JShelter on and off.
 
-*  **ClearURLs**
-*  *What it does:* This extension automatically strips tracking parameters like `utm_source` or `fbclid` for instance from URLs.
-*  *Why it matters:* When you click a link you are often broadcasting who sent you that link and what platform you came from. This is extremely important as it cleans the URLs before you even leave the browser and are redirected, giving much more privacy to your experience.
+## Trade-offs
 
-*  **JShelter**
-*  *What it does:* This is an anti-malware extension that creates essentially a "JavaScript Shield" around your browser. It intercepts and modifies the APIs that websites use to fingerprint your hardware or track your behavior across the web.
-*  *Why it matters:* I use this to prevent websites from reading my exact screen resolution, battery status, or hardware concurrency. It essentially makes you look like thousands of other users similar to Mullvad Browser. I only use this extension on IceCat for that exact reason.
+- **Breakage.** With LibreJS, JShelter, uBlock Origin, and the rest running together, many web apps (banking portals, heavy SaaS apps) break. I allow specific sites or use a less restricted browser for them.
+- **Fingerprint entropy.** Every extension can make a browser *more* unique, which works against anti-fingerprinting. I accept that this profile is distinctive. Its job is control over what runs, not blending in; blending in is [Mullvad Browser](./mullvad-browser.md)'s job.
 
-*  **Decentraleyes**
-*  *What it does:* This tool manipulates Content Delivery Networks or CDNs locally on your machine.
-*  *Why it matters:* This tool is so important because instead of fetching common libraries used such as **jQuery** or **Bootstrap** from Google's servers, it instead serves a local copy straight to you. This benefits the end user as it speeds up loading times for pages and prevents centralized tracking as a whole since you never interact with Google's 3rd party servers to begin with.
+## Limitations and residual risk
 
-*  **Privacy Redirect**
-*  *What it does:* This extension automatically redirects popular services such as Youtube, Twitter, Reddit, or Instagram to more privacy friendly alternative front ends such as Invidious, NItter, or Libreddit.
-*  *Why it matters:* This tool helps prevent those platforms from setting tracking cookies or logging your IP address when you click a link. Also another huge plus is in my personal opinion the user experience of these alternative front ends are much smoother and user friendly than their counterparts.
+- **Overlap.** Several extensions do similar work (uBlock Origin, Privacy Badger, TPRB, and ClearURLs all block or strip tracking to some degree). Overlap adds defense in depth, but it also adds fingerprint surface and maintenance.
+- **Extensions are a supply-chain risk.** Each has broad access to every page I visit, and extensions are sometimes sold or hijacked and then updated with malicious code. Fewer, well-maintained, widely audited extensions are better than many.
+- **Unmaintained extensions age badly.** Privacy Redirect is a current example. Unmaintained extensions should be replaced or removed.
 
-*  **Total Privacy and Security (TPRB)**
-*  *What it does:* It enhances browser tracking protections and hardens the default privacy settings against known data brokers.
-*  *Why it matters:* It matters because it adds an extra layer of filtering for domains that may slip by uBlock Origin's default block list. Think of it almost as a fail safe.
+## Verdict
 
-*  **Privacy Badger**
-*  *What it does:* Unlike uBlock origin which uses static lists to block domains, Privacy Badger, a tool made by the EFF, uses a method known as *heuristic blocking*. What that essentially means is that it watches domains and automatically blocks any that may appear to be tracking you across multiple sites, even if those trackers aren't on a traditional block list.
-*  *Why it matters:* It has the capability of catching zero day trackers and domains that uBlock Origin simply cannot grasp because they have not yet been added to it's filter list yet which makes it extremely valuable as a second line of defense just in case uBlock Origin cannot detect a malicious domain or tracker.
+Maximum protection comes with friction no matter what you do. I accept the occasional broken site in exchange for knowing what runs on each page and what is tracking me. I also review this list periodically, because an extension that was the right choice two years ago may not be the right choice now.
 
-*  **Port Authority**
-*  *What it does:* This tool is a highly aggressive port and connection monitoring tool. It logs every single outbound connection your browser attempts to make whether that be a port connection, an IP connection, or a domain connection. It does this in real time and allows you to black list them or allow certain connections depending on your preference for a particular site.
-*  *Why it matters:* If a website ever secretly attempts to connect to an obscure port or a known malicious IP, Port Authority will catch it and alert you to the intrusion. It gives you ultimate control and visibility into your browser's network traffic and I like using it as a IDS system for my browser in a sense.
+## References
 
-## Some Trade Offs
+- [uBlock Origin](https://github.com/gorhill/uBlock)
+- [JShelter: Farbling](https://jshelter.org/farbling/)
+- [EFF: Privacy Badger is changing to protect you better (2020)](https://www.eff.org/deeplinks/2020/10/privacy-badger-changing-protect-you-better)
+- [Port Authority (GitHub)](https://github.com/ACK-J/Port_Authority)
+- [LibRedirect](https://libredirect.github.io/)
 
-**Breakage:** With JShelter, LibreJS, and uBlock Origin and many of the other extensions running simultaneously, many modern web apps like banking portals or apps that run heavily on a SaaS model will completely break and be unusable. You will be required to white list these sites or use a separate less restricted browser profile in order to access them.
+---
 
-**Fingerprint Entropy:** Installing too many extensions can make your browser actually *more* unique which is extremely bad for anti-fingerprinting techniques. I try to mitigate this risk by only keeping the list down to just these tools rather than installing every single privacy extension on the Firefox extensions site (addons.mozilla.org) although I still stand out heavily with the extensions I do have which is a hit I just take as I can't avoid it and also keep my extensions at the same time.
-
-## The Verdict
-
-Maximum protection comes with heavy friction no matter what you do. I'm willing to accept the periodically broken site in exchange for knowing exactly what scripts are running on said site and what is tracking me across the web. 
+[← Layer 3 overview](./README.md) · [Stack overview](../README.md)
