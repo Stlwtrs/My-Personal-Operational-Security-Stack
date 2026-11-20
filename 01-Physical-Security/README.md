@@ -1,28 +1,43 @@
-Layer 1: Physical Security
---------------------------
+# Layer 1: Physical Security
 
-The main adversary for this layer is thieves, malicious actors with brief physical access, and visual eavesdroppers, or what I like to call shoulder surfers.
+**Adversaries:** thieves, opportunistic attackers with brief physical access, and visual eavesdroppers ("shoulder surfers").
 
-In cybersecurity we tend to focus almost entirely on remote network attacks. However if an adversary has physical access to your hardware, almost all your software defenses can be bypassed and mean nothing. This layer is about making sure that even if my laptop is stolen, lost, or even briefly handled by someone else, my personal data remains secure.
+**Goal:** if my laptop is stolen, lost, or handled by someone else for a few minutes, my data stays confidential and the machine does not quietly accept new hardware.
 
-This layer operates on the principle of **Hardware Sovereignty**. It stands for trusting nothing by default and securing the physical endpoint to the best of your ability.
+In cybersecurity we tend to focus almost entirely on remote network attacks. But an adversary with physical access can bypass a surprising number of software defenses. This layer starts from the hardware up: firmware I can inspect, a management engine that is switched off, a disk that is unreadable without my passphrase, USB ports that reject unknown devices, and a screen that only I can read.
 
-## Documentation in this Section
+The principle behind this layer is **hardware sovereignty**: trust nothing by default and secure the physical endpoint as far as is practical.
 
-*  **[Intel ME (HAP Mode)](./intel-me-hap.md/)**
-*  *How I neutralized the Intel Management Engine to prevent out of band firmware exploitation on my end.*
+## Controls in this layer
 
-*  **[LUKS Full Disk Encryption](./luks-encryption.md/)**
-*  *Data at rest protection using a secure and complex master passphrase.*
+| Control | What it does | Status |
+| --- | --- | --- |
+| [Hardware Selection](./hardware-selection.md) | Open-source (coreboot-based) firmware, Linux-first hardware, camera and microphone physically removed | ✅ Implemented |
+| [Intel ME (HAP mode)](./intel-me-hap.md) | Halts the Intel Management Engine early in boot to shrink the firmware attack surface | ✅ Implemented |
+| [LUKS Full Disk Encryption](./luks-encryption.md) | Makes the disk unreadable without my passphrase when the machine is powered off | ✅ Implemented |
+| [USBGuard](./usbguard.md) | Blocks USB devices that are not on an explicit allow list (BadUSB defense) | ✅ Implemented |
+| [Faraday Bag](./faraday-bag.md) | RF isolation for my phone and laptop while they are stored | ✅ Implemented |
+| [Privacy Screen](./privacy-screen.md) | Narrows the screen's viewing angle in public spaces | ✅ Implemented |
 
-*  **[USBGuard](./usbguard.md/)**
-*  *Kernel level defense against BadUSB and malicious hardware injection.*
+## How the controls fit together
 
-*  **[Faraday Bag](./faraday-bag.md/)**
-*  *RF shielding to ensure the machine is truly air-gapped when powered off.*
+```mermaid
+flowchart LR
+    A[Firmware<br/>Dasharo / coreboot] --> B[Intel ME<br/>HAP-disabled]
+    B --> C[Boot<br/>LUKS passphrase]
+    C --> D[Running system<br/>USBGuard allow list]
+    D --> E[User in public<br/>privacy screen]
+    E --> F[Device stored<br/>Faraday bag]
+```
 
-*  **[Privacy Screen](./privacy-screen.md/)**
-*  *Defeating visual eavesdropping and shoulder surfing in public spaces.*
+Each step covers a different moment in the device's life: boot, use, travel, and storage.
 
-*  **[Hardware Selection](./hardware-selection.md/)**
-*  *The reason I chose open source firmware and hardware from a reputable, privacy focused company.*
+## Residual risk for this layer
+
+- **A running or suspended laptop is not "at rest."** LUKS only protects data while the machine is powered off; in suspend the disk key stays in RAM.
+- **Evil-maid attacks** (tampering with the boot chain while the device is out of sight) are only partly addressed. See the limitations in [LUKS](./luks-encryption.md#limitations-and-residual-risk).
+- **Sophisticated hardware implants and supply-chain interdiction** are out of scope for my [threat model](../THREAT-MODEL.md).
+
+---
+
+[← Stack overview](../README.md) · [Next layer: Operating System →](../02-Operating-System/README.md)
