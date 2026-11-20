@@ -1,53 +1,74 @@
 # Mullvad VPN
 
-**Threat Mitigated:** ISP traffic analysis, IP logging, and advanced AI driven website fingerprinting.
+| | |
+| --- | --- |
+| **Layer** | 3 · Network Privacy |
+| **Status** | ✅ Implemented |
+| **Threats mitigated** | ISP logging and resale of browsing data, DNS snooping, on-path observers on untrusted Wi-Fi, website-fingerprinting traffic analysis |
+| **MITRE ATT&CK** | [T1040](https://attack.mitre.org/techniques/T1040/) Network Sniffing · [T1557](https://attack.mitre.org/techniques/T1557/) Adversary-in-the-Middle |
+| **Last reviewed** | 2026-11-20 |
 
-## Why is this so important?
+## Why this control exists
 
-A VPN is one of the first lines of defense when it comes to hiding your activity from your ISP. Without it, your ISP has the ability to log every website you visit, every server you connect to, and how you stay on each service while on the internet. This is a huge attack vector as you are putting your trust in your ISP to not sell said data to a data broker or make sure your data is safe and encrypted.
+Without a VPN, my ISP can see every domain I look up, every server I connect to, and when and for how long I use each service. That data can be logged, sold to data brokers, or leaked in a breach.
 
-I chose **Mullvad** for this exact reason. I gave my ISPs control over my data to Mullvad as they have a long track record of doing the right thing with your data when it comes to being a VPN company. They have a strict no logs policy, anonymous account generation with no email requirement, and they have a strong commitment to pushing the boundaries of network privacy. However sometimes just the VPN is not enough. The way packets are sized and timed can still allow an adversary to guess what you are doing based off packet size. In the implementation section I will explain the ways we can prevent such things using Mullvad's settings.
+A VPN **moves** that visibility from my ISP to the VPN provider; it does not make it disappear. So the real question is which party I trust more, and why. I chose **Mullvad** because its claims are backed by evidence:
 
-## The Implementation
+- **No personal information required.** Accounts are a randomly generated 16-digit number, with no email address.
+- **Anonymous payment options,** including cash and Monero.
+- **Proven no-logs under pressure.** In April 2023, Swedish police arrived at Mullvad's office with a search warrant to seize computers containing customer data. Mullvad showed that no such data existed, and the police left without taking anything.
+- **Regular independent audits** of its apps and infrastructure (for example by Cure53).
 
-*  **DAITA (Defense Against AI Guided Traffic Analysis)**
-*  *What it is:* DAITA intentionally modifies your network traffic by injecting something known as *"dummy packets"* into the mix which normalizes the packet sizes across all your data. This makes every piece of data you transfer over your network look indistinguishable from the others.
-*  *Why it matters:* AI can analyze the size and timing of encrypted packets to guess what websites you are visiting even if your traffic is encrypted. DAITA breaks that analysis and makes it as hard as it can for the AI to decipher what you are doing online by making the traffic appear as random noise.
+Even encrypted traffic leaks information through the **size and timing** of packets. Researchers have shown that machine-learning models can often guess which website you are visiting from those patterns alone ("website fingerprinting"). The settings below address that.
 
-*  **Multihop Routing**
-*  *What it is:* Instead of routing through one VPN server Mullvad routes your traffic through two servers, called a entry server and an exit server.
-*  *Why it matters:* Using this setting in your VPN settings makes it so no individual server knows both your IP address and your final destination. In turn it makes traffic correlation attacks significantly harder to pull off.
+## How it works (my configuration)
 
-*  **DNS Blocking**
-*  *What is it:* Mullvad's DNS servers resolve your queries and will actively block known malware, trackers, and ad domains before they even have the chance to leave the VPN tunnel.
-*  *Why it matters:* Without this, your device will send a DNS request to your ISP to ask what the IP address is for a particular site lets say for instance Github.com. The ISP will log this info. But by using Mullvad's internal DNS blockers the ISP now can only see an encrypted VPN tunnel and nothing more. The DNS request is resolved securely inside the tunnel and known malicious domains are dropped long before your browser ever connects to them increasing your security on the web massively.
+### DAITA (Defense Against AI-guided Traffic Analysis)
 
-## The Reality Of No Logs
+- *What it is:* Mullvad makes every packet in the tunnel the same size, adds random background traffic, and distorts traffic patterns, which blurs the size and timing signals of my browsing. It was developed with Karlstad University and is built on the open-source Maybenot framework.
+- *Why it matters:* it makes website-fingerprinting models much less accurate, because every page load looks more alike on the wire.
 
-Mullvad doesn't ask for an email nor does it have a subscription service model which could potentially link back to you based off your payment method. If you were to pay with a cryptocurrency such as **Monero**, nobody not even law enforcement can get anything even with a warrant as you have no paper trail and no logs on your activity, all they have is an account number and nothing more.
+### Multihop
 
-*Disclaimer: I am not advocating for illegal or criminal activities regarding this section, I am simply illustrating just how secure and private Mullvad VPN can become if you use it the right way.*
+- *What it is:* traffic enters through one Mullvad server and exits through a second one.
+- *Why it matters:* the entry server knows my IP address but not my destinations; the exit server sees destinations but not my IP. That makes traffic-correlation attacks against a single server much harder.
 
-## Some Trade Offs
+### DNS content blocking
 
-*  **Speed:** Running DAITA and Multihop together will slow down your connection a fair bit. This is an unavoidable reality as adding dummy packets and multiple encryption layers to your traffic will tend to do such a thing. Also make sure to not use DAITA while using your phone's mobile data as it will eat through your data usage on limited plans, even though it is more secure with it on if you want a much lighter phone bill I would recommend turning it off while only on data.
+- *What it is:* DNS queries are resolved by Mullvad's resolver inside the encrypted tunnel, with blocklists for ads, trackers, and known malware domains.
+- *Why it matters:* my ISP never sees which domains I look up, and requests to known-malicious domains fail before a connection is even attempted.
 
-*  **Battery Life:** Constantly encrypting and routing traffic takes a bunch of CPU power and in turn will drain your laptop's battery a lot faster than you are used to, for example I lose about an hour and a half of battery life when I turn on my VPN with all its settings enabled. Just be wary of that fact for the future.
+## Verification
 
-## The Verdict
+```bash
+mullvad status    # should report "Connected" and the relay in use
+```
 
-I personally accept a latency and battery hit for my situation. Ensuring that my ISP sees nothing but encrypted noise is worth the performance cost for my particular threat model.
+Then open the [Mullvad connection check](https://mullvad.net/en/check) in the browser. It confirms that traffic is going through Mullvad and tests for DNS and WebRTC leaks.
 
-## Get Mullvad VPN Yourself
+## Trade-offs
 
-In an industry full of "no log" VPNs that are secretly owned by data brokers themselves or require an email or credit card, Mullvad stands out as a genuine privacy advocate among the rest.
+- **Speed.** DAITA and Multihop together noticeably slow my connection. Padding, dummy packets, and an extra hop all cost bandwidth and latency.
+- **Mobile data.** DAITA's dummy traffic uses extra data. On a limited mobile plan, turning it off while on cellular saves a lot of data, at some cost to privacy.
+- **Battery life.** Constant encryption and padding cost CPU. With everything enabled, I lose about an hour and a half of battery life.
+- **CAPTCHAs and blocks.** Shared VPN exit IPs are sometimes rate-limited or challenged by websites.
 
-*  **No Emails:** You get a random 16 digit account number and you never provide any personal info while creating your account.
+## Limitations and residual risk
 
-*  **Audited:** They regularly hire third party security firms like **Cure53** for example to audit their apps and overall infrastructure.
+- **A VPN does not make you anonymous.** Cookies, logins, and browser fingerprints identify you regardless of your IP address. That is why the [browser controls](./README.md#browser-compartmentalization) exist.
+- **Mullvad is now the party I trust.** Their track record is strong, but it is still trust in a single provider. For tasks that require not trusting any single party, I use [Tor](./tor-browser.md).
+- **Leak protection.** Mullvad's always-require-VPN / lockdown setting blocks traffic if the tunnel drops. Without it, a reconnect can briefly leak traffic outside the tunnel.
 
-*  **Ownership:** They have never taken venture capital money in their companies lifetime, meaning they do not have investors pushing them to monetize user data including yours.
+## Verdict
 
-  If you would like to try it out yourself you can try it out by clicking the link below. I heavily recommend them as they are the only VPN provider I wholeheartedly trust will protect my data.
+I accept the latency and battery hit. Making sure my ISP sees nothing but encrypted noise, from a provider that has proven it keeps no logs, is worth the performance cost for my threat model.
 
-  https://mullvad.net/en
+## References
+
+- [Mullvad VPN](https://mullvad.net/en)
+- [Mullvad: Search warrant, customer data not compromised (April 2023)](https://mullvad.net/en/blog/2023/4/20/mullvad-vpn-was-subject-to-a-search-warrant-customer-data-not-compromised/)
+- [Mullvad: DAITA](https://mullvad.net/en/vpn/daita)
+
+---
+
+[← Layer 3 overview](./README.md) · [Stack overview](../README.md)
