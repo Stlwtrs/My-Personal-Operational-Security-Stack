@@ -1,69 +1,91 @@
-# P2P Exchanges & Decentralized Trading
+# P2P Exchanges and Self-Mining
 
-**Threat Mitigated:** KYC data breaches, exchange insolvency, account freezing, and financial surveillance.
+| | |
+| --- | --- |
+| **Layer** | 5 · Financial Privacy |
+| **Status** | ✅ Implemented |
+| **Threats mitigated** | KYC data breaches, exchange insolvency, arbitrary account freezes, financial surveillance |
+| **MITRE ATT&CK** | N/A |
+| **Last reviewed** | 2026-11-20 |
 
-## Why This Is So Important
+## Why this control exists
 
-Centralized exchanges like **Coinbase** or **Binance** are massive single points of failure. To use them, you have to surrender your legal identity(via KYC), your bank details, and your transaction history.
+Centralized exchanges like Coinbase and Binance are single points of failure. To use them, you hand over your legal identity (KYC), your bank details, and your full transaction history. That creates two risks:
 
-This creates two critical risks to you as the user:
+- **The honeypot risk.** Exchanges are prime targets for attackers. If an exchange's database is breached, your identity is permanently linked to your wallet addresses, and in the worst case the funds held there are stolen.
+- **The freeze risk.** Automated risk systems can freeze accounts over "suspicious activity," which can include something as ordinary as regularly withdrawing to your own cold storage.
 
-*  **The Honeypot Risk:** Centralized exchanges are prime targets for malicious hackers. If the exchanges database is ever breached your identity is permanently linked to your crypto wallet address and the hackers may have the ability to steal the funds straight from said address.
+I minimize my reliance on centralized, KYC-heavy exchanges and acquire cryptocurrency through **self-mining** and **non-custodial peer-to-peer swaps**.
 
-*  **The Freeze Risk:** Exchanges can arbitrarily freeze your funds if their automated risk algorithms flag your account for "suspicious activity", which tends to happen if you are regularly sending money to your cold storage via these exchanges.
+## 1. Self-mining with XMRig
 
-To maintain financial security and privacy, I minimize my reliance on such centralized KYC heavy exchanges. I instead utilize decentralized, peer to peer methods and self mining to acquire my cryptocurrency.
+Mining Monero myself means newly created coins go straight to my own wallet: no fiat on-ramp, no bank transfer, no KYC.
 
-## Implementation
+Monero uses the **RandomX** proof-of-work algorithm, which is designed to run efficiently on ordinary CPUs. I use **[XMRig](https://xmrig.com/)**, an open-source, high-performance miner, configured through its `config.json` rather than long command lines. A sanitized example is in [`configs/xmrig/config.example.json`](../configs/xmrig/config.example.json).
 
-### 1. Self Mining 
+### Key settings
 
-The most private way I currently acquire Monero is to mine it personally. Because I am running the mining software and directing the output to my own wallet, the newly minted coins have zero connection to my real world identity. There is no fiat on ramp, no bank transfer, and no KYC exchange involved in the process. It is the cleanest, most private way to acquire cryptocurrency currently.
+| Setting | Value | Why |
+| --- | --- | --- |
+| `cpu.huge-pages` | `true` | Large memory pages reduce **TLB** (Translation Lookaside Buffer) misses, which significantly improves RandomX hashrate. Because XMRig runs as an unprivileged user, root must reserve huge pages ahead of time (`vm.nr_hugepages`); XMRig's startup log shows whether the allocation succeeded. |
+| `cpu.max-threads-hint` | `75` | Use about 75% of CPU threads, never 100%. The machine stays responsive and runs cooler, and hardware longevity matters as much as hashrate. |
+| `pools[].tls` | `true` | Encrypts the connection between the miner and the pool so an observer cannot read the mining protocol traffic. The pool must support TLS. |
+| `http.enabled` | `false` | Keeps XMRig's HTTP API off. It is disabled by default and binds to `127.0.0.1` when enabled, but enabling it on `0.0.0.0` without an access token would let anyone on the network query or control the miner, so I keep it off. |
 
-I currently use **XMRig** to achieve this. XMRig is a high performance, open source CPU based mining software.
+### Operational rules for mining
 
-* **A. The Configuration(`config.json`)**
+1. **Never run as root.** XMRig is written in C++ and works directly with system memory. It runs under a dedicated, unprivileged user, so a vulnerability in the miner gives an attacker an account with nothing useful in it.
+2. **Thermal management.** Mining keeps the CPU under sustained load. I monitor temperatures with `lm_sensors` (official Arch repositories). If the CPU passes about 85 °C, I reduce the thread count. Availability matters as much as confidentiality and integrity, and cooked hardware is an availability failure.
+3. **Network isolation.** All mining traffic goes through [Mullvad VPN](../03-Network-Privacy/vpn.md), so neither my ISP nor the pool sees my real IP address.
 
-  Instead of passing long command line arguments to tinker with the configuration of XMRig I use the built in `config.json` file that comes with the software. This file allows for granular control over CPU threads and memory allocation. In the next section I will explain further what commands you can tweak to optimize your Monero mining experience to the max and ensure you are getting the most crypto from your hardware.
+**Worth knowing:** a traditional pool operator sees my payout address and the (VPN) IP I connect from. **P2Pool**, a decentralized Monero mining pool with no operator and no custody of funds, is an alternative that removes that middleman.
 
-*  **B. Key Security & Performance Settings Explained:**
+## 2. Non-custodial P2P swaps
 
-*  `"huge-pages": true`: This setting will drastically improve the hashrate of your hardware by allocating large memory pages to the software, which reduces **TLB(Translation Lookaside Buffer)** misses.
+When I need to trade another asset for Monero, I use **non-custodial** methods, such as BTC↔XMR **atomic swaps**.
 
-*  `"max-threads-hint": 75`: This tells XMRig to only use 75% of the available CPU threads on the system, I never use 100%. This ensures that the system remains responsive for months on end and prevents the CPU from throttling due to thermal limits. Although it is always important to optimize for maximum hashrate, it is only essential to optimize for the **longevity** of your system as well.
+- Buyers and sellers trade directly, with no central intermediary holding funds.
+- An atomic swap is enforced cryptographically: either both sides of the trade complete, or neither does.
+- No government ID is handed to a central authority, which keeps my data out of centralized databases that could later be breached.
 
-*  `"tls": true`: This will encrypt the connection between the miner and the pool it is mining against. Without this an outside observer could easily see you are mining Monero.This just adds another layer of encryption to the mining process.
+## 3. Spending: closing the loop
 
-*  `"http": { "enabled": false }`: This is a critical setting for your privacy and security while mining. It disables the XMRig web interface(which usually resides on port 8080/8081). Leaving this open on a local network is a massive security risk, as anyone on the LAN can access your miner.
+I spend XMR directly with privacy-respecting services. For example, I pay for my Mullvad VPN account with Monero. Acquiring, holding, and spending privately creates a closed loop with no KYC link at any point.
 
-*  **C. Operational Security Rules For Mining**
+## Verification
 
-*   **1. Never Run as Root:** XMRig is written in C++ and interacts directly with system memory. I run it under a dedicated, low privileged system user because of this. If a zero day is ever found in the miner, the attacker is confined to a user with zero useful privileges for the attacker to abuse.
+```bash
+# XMRig must not be running as root
+ps -o user=,comm= -C xmrig
 
-*   **2. Thermal Management:** Mining will push your CPU to 100% load. I use a tool called `lm-sensors`, which is available in the AUR repository, to monitor system temperatures, voltage, etc. If my CPU ever hits 85C+ I reduce the thread count to cool the system off and increase its longevity. Hardware degradation is another security risk as availability matters just as much as confidentiality and integrity in this scenario.
+# Huge pages reserved by the system
+grep -i hugepages_total /proc/meminfo
 
-*   **3. Network Isolation:** Whether I am mining on a public network or not, which majority time I am not but the point still stands, I ensure all of my mining traffic is routed through my Mullvad VPN. This is to prevent the viewing of my XMRig mining traffic, further increasing my privacy while mining.
+# CPU temperatures under load
+sensors
+```
 
-### 2. P2P Swaps(Non-Custodial Trading)
+## Trade-offs
 
-When I do need to trade other assets for Monero I utilize decentralized, non-custodial platforms such as *atomic swaps* for example.
+- **Friction and skill.** P2P trading and mining are much slower and need far more technical knowledge than typing a card number into an exchange.
+- **Vigilance.** P2P markets have no customer support to reverse a bad trade, and the same privacy that protects me also protects a scammer. If you get scammed, the money is almost certainly gone.
+- **Economics.** CPU mining on a laptop often earns less than the electricity it uses and adds wear to the hardware. I do it for privacy, not profit.
 
-* These platforms connect buyers and sellers directly without a central intermediary.
+## Limitations and residual risk
 
-* I do not hand over my government ID to a central authority in order to conduct such swaps.
+- **Taxes still apply.** In the US, mined cryptocurrency is generally taxable income at its fair market value when received (IRS Notice 2014-21), and crypto-to-crypto swaps can be taxable events. Privacy from the public is not privacy from your tax obligations.
+- **Pool-level metadata.** With a centralized pool, the pool links my payout address to my mining sessions.
 
-* The trades are solely conducted peer to peer, minimizing the digital paper trail and keeping my financial data out of centralized databases to lessen the risk of a breach exposing my personal information.
+## Verdict
 
-### 3. Spending The Asset
+I am willing to trade convenience for financial privacy. The extra time and effort of acquiring XMR without exchanges is worth it to keep my identity out of centralized databases.
 
-To complete the loop, I use Monero as a medium of exchange for services that respect privacy, for example I use Monero to pay for my Mullvad VPN account. This creates a closed loop ecosystem. I acquire Monero privately, hold it privately, and spend it privately.
+## References
 
-## The Trade Off
+- [XMRig documentation](https://xmrig.com/docs/miner)
+- [P2Pool](https://p2pool.io/)
+- [IRS Notice 2014-21](https://www.irs.gov/pub/irs-drop/n-14-21.pdf)
 
-*  **Friction:** P2P trading and self mining are significantly slower and require much more technical knowledge than typing a credit card number into a centralized exchange meaning there is a much higher barrier of entry for such a task.
+---
 
-*  **Vigilance:** P2P marketplaces require you to be highly vigilant against scammers, as there is no centralized customer support to reverse a bad transaction. The privacy preserving tools within Monero also obfuscate the scammer meaning if you get scammed you most likely will not receive your money back and it is lost forever.
-
-## The Verdict
-
-I am willing to trade convenience if it means absolute financial privacy. The additional time and effort required to acquire such assets through decentralized methods is worth it 100% to keep my identity secure.
+[← Layer 5 overview](./README.md) · [Stack overview](../README.md)
