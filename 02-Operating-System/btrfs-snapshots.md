@@ -1,42 +1,74 @@
-# Btrfs Snapshots & System Recovery
+# Btrfs Snapshots and System Recovery
 
-**Threat mitigated:** Ransomware, catastrophic system failures that would otherwise be permanent, bad updates, and accidental user error.
+| | |
+| --- | --- |
+| **Layer** | 2 · Operating System |
+| **Status** | ✅ Implemented |
+| **Threats mitigated** | Bad updates, broken configurations, accidental deletion; partial help against non-root ransomware |
+| **MITRE ATT&CK** | [T1486](https://attack.mitre.org/techniques/T1486/) Data Encrypted for Impact · [T1490](https://attack.mitre.org/techniques/T1490/) Inhibit System Recovery (see limitations) |
+| **Last reviewed** | 2026-11-20 |
 
-## The Why Behind This
+## Why this control exists
 
-In cybersecurity, we tend to talk a lot about preventing attackers from getting in especially on the SOC side of things, but what happens if they *do* get in? Or what happens if a kernel update completely breaks the graphics drivers on the system or something adjacent?
+Security is about **availability** as well as confidentiality and integrity. A kernel update that breaks the graphics stack, or a configuration change that stops the system from booting, can cost hours. I want to be able to return to a known-good state in minutes.
 
-If your system is compromised by ransomware or a bad update, you need to have a way to instantly roll back to a known, good save of the system just in case.
+## How it works
 
-I use **Btrfs** for this exact purpose. It is a modern "copy-to-write" filesystem which is combined with a tool called **Snapper**. This allows me to take instant, zero cost snapshots of my entire system before I make any major changes so If the update does break the system I have a backup.
+**Btrfs** is a copy-on-write (CoW) filesystem. When data changes, Btrfs writes the new version to a new location instead of overwriting the old one in place. A **snapshot** is a new reference to the existing data at that moment, so taking one is nearly instant and initially uses almost no extra space. Space is consumed only as files change afterwards.
 
-## Implementation
+**Snapper** manages snapshots: it creates them on a schedule, cleans up old ones, and compares or rolls back changes.
 
-**Filesystem:** Btrfs with a root and home sub volume. This is to mitigate risk by separating the higher tiered user (root) from the standard users. This is also known as **Principle of Least Privilege** and is extremely prevalent when it comes to cybersecurity on the job and out of it.
+## My implementation
 
-**The Strategy:** I do my best to always take a snapshot of my system before every major update I commit to and I also put snapshots on a daily timer just in case something breaks while I am on my system and not currently committing to an update.
+- **Subvolume layout:** separate subvolumes for the root filesystem and for `/home`. Rolling the system back to an earlier snapshot therefore does **not** roll back my personal files, and system snapshots stay small.
+- **Schedule:** a daily timeline snapshot, plus a manual snapshot before major updates or risky changes.
+- **Retention:** snapshots are kept for roughly 7 days, so they do not slowly fill the SSD.
+- **Boot integration:** GRUB is configured to list Btrfs snapshots (via `grub-btrfs`), so I can boot straight into a previous snapshot from the boot menu if the current system will not start.
 
-**Boot Integration:** My bootloader (GRUB) is configured to read the Btrfs snapshots. If I were to break my system, I can literally boot directly from the previous snapshot I had taken via the GRUB boot menu.
+## Verification
 
-## Why this is an amazing tool in my arsenal
+```bash
+# List subvolumes
+sudo btrfs subvolume list /
 
-If an adversary were to somehow gain root access to my system and start deleting files left and right or install a rootkit, I have no need to panic. I can just reboot into an earlier snapshot where they never had access to begin with and call it a day. It also gives me the freedom to experiment with my system and break things without fear of a bricked system.
+# List snapshots managed by Snapper
+sudo snapper -c root list
 
-## How to Verify you have Btrfs
+# Take a manual snapshot before a risky change (recommended over raw btrfs commands)
+sudo snapper -c root create --description "before kernel upgrade"
 
-To see the list of your current Btrfs subvolumes you can use the command:
+# Equivalent raw Btrfs command: a read-only (-r) snapshot of /
+sudo btrfs subvolume snapshot -r / /.snapshots/manual-backup
+```
 
-```sudo btrfs subvolume list /```
+## Trade-offs
 
-and to manually take a snapshot of your root directory you can use the command:
+- **Snapshots are NOT backups.** Snapshots live on the same physical SSD as the data. If the drive dies, both are gone. Snapshots protect against *logical* problems (bad updates, mistakes), not hardware failure. This is why an offline backup target (an air-gapped NAS) is on my [roadmap](../README.md#roadmap).
+- **Disk space.** Snapshots that are never cleaned up slowly consume the drive, so retention limits are essential.
+- **Kernel/boot mismatch.** If `/boot` (or the EFI partition) is not part of the root snapshot, booting an old snapshot with a newer kernel can cause module mismatches. `grub-btrfs` setups need to account for this.
 
-```sudo btrfs subvolume```
-```snapshot / / .snapshots/manual_backup```
+## Snapshots and a real compromise
 
-Do the first command and then the second right after and you are all set!
+It is tempting to think "if someone gets root, I will just boot an old snapshot." **That is not a safe recovery plan,** and it is an important distinction:
 
-## The Trade Offs
+- **Root can delete snapshots.** Deleting or encrypting backups and snapshots is a standard attacker technique ([T1490 Inhibit System Recovery](https://attack.mitre.org/techniques/T1490/)).
+- **Persistence may live outside the snapshot.** A rootkit can hide in `/home`, the EFI partition, or firmware, none of which a root-subvolume rollback touches.
+- **You cannot know when the compromise started.** "An earlier snapshot" may already contain the attacker's foothold.
 
-**Snapshots are *NOT* Backups:** A snapshot lives on the same physical drive as your personal data. If the SSD in which you are using physically dies or becomes corrupted, both your data and the snapshots are gone. Snapshots are more to protect against *logical* errors such as ransomware and bad updates and do not protect against total hardware failure. (This is part of the reason I personally want to implement an air-gapped NAS into my setup in the future to mitigate such a possibility.)
+The correct response to a suspected **root** compromise is incident response, not rollback: disconnect the machine, preserve evidence if needed, **rebuild from known-good installation media**, restore *data* (not system state) from offline backups, and rotate every credential that was used on the machine.
 
-**Disk Space:** If you don't configure Snapper to automatically delete old snapshots that are no longer of use to you, they will slowly consume your hard drive/SSD. It is always good practice to give backups a TTL. Personally I have mine set to a 7 day window but whatever works best for you is applicable to this as well.
+Snapshots do help in narrower cases. Ransomware running as my **unprivileged** user cannot modify read-only root snapshots, and a `/home` snapper configuration can provide a quick restore point for user files. That is useful, but it is not a substitute for offline backups.
+
+## Verdict
+
+Snapshots give me the freedom to experiment and update without fear of a bricked system, and they turn most "I broke it" moments into a two-minute rollback. For an actual compromise, the answer is rebuild and restore, and snapshots are honestly scoped to what they can do.
+
+## References
+
+- [ArchWiki: Btrfs](https://wiki.archlinux.org/title/Btrfs)
+- [ArchWiki: Snapper](https://wiki.archlinux.org/title/Snapper)
+- [grub-btrfs](https://github.com/Antynea/grub-btrfs)
+
+---
+
+[← Layer 2 overview](./README.md) · [Stack overview](../README.md)
