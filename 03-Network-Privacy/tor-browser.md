@@ -1,64 +1,67 @@
 # Tor Browser
 
-**Threat Mitigated:** ISP surveillance, IP address logging, network traffic correlation, and browser fingerprinting.
+| | |
+| --- | --- |
+| **Layer** | 3 · Network Privacy |
+| **Status** | ✅ Implemented (situational, not a daily driver) |
+| **Threats mitigated** | Single-provider trust (ISP or VPN), IP-based identification, network censorship |
+| **MITRE ATT&CK** | [T1040](https://attack.mitre.org/techniques/T1040/) Network Sniffing |
+| **Last reviewed** | 2026-11-20 |
 
-## Disclaimer
+> **Disclaimer:** This document is provided for educational purposes and to document my personal privacy architecture. I do not condone using Tor for illegal activity. Tor is a vital tool for journalists, activists, and privacy-conscious people worldwide, and it should be used responsibly and within the law.
 
-This section is provided strictly for educational purposes and to document my personal privacy/security architecture. I do not condone, support, or participate in the use of the Tor Network for illegal activities, accessing illicit materials, or bypassing legal restrictions for your jurisdiction. The Tor Network is a vital tool for journalists, activists, and privacy conscious individuals worldwide, and it should be used responsibly and within the bounds of the law no matter what.
+## Why this control exists
 
-## Support The Tor Project
+My VPN hides my traffic from my ISP, but it requires trusting Mullvad. For tasks where I do not want **any** single party to be able to link me to my activity, I use Tor.
 
-The Tor network is maintained by a 501(c)(3) non-profit organization. It is funded by donations from individuals and organizations who believe in a free and open internet.
+Tor (The Onion Router) sends traffic through three volunteer-run relays: a **guard**, a **middle**, and an **exit** relay. Each layer of encryption is peeled off at the next relay, so no single relay knows both who I am and where I am going.
 
-If you value privacy and anonymity online as much as I do, please consider donating to support the ongoing development of the project including relay infrastructure and advocacy work:
+I use Tor Browser for **high-risk compartmentalization** only. Its main role in my stack is anonymous network access for my Monero wallet on [Tails](../05-Financial-Privacy/tails-usb.md).
 
-**[Donate to the Tor Project]
-https://donate.torproject.org**
+## My implementation
 
-With that being said, let us begin.
+- **Browser:** the official [Tor Browser](https://www.torproject.org/download/).
+- **Bridges when needed:** on networks that block Tor, I use a pluggable-transport bridge:
+  - **obfs4** scrambles Tor traffic so it looks like random bytes rather than recognizable Tor traffic.
+  - **Snowflake** tunnels traffic over WebRTC through volunteer proxies, so it resembles a video call.
+- **Security level:** I run at **Safest** by default, which disables JavaScript on all sites and blocks many other attack vectors. If a site I genuinely need breaks, I step down one level for that task.
 
-## Why This Is So Important
+## Operational rules
 
-While I do use a VPN via Mullvad to hide my traffic as good as I can from my ISP, a VPN still requires me to trust the VPN provider, although I trust Mullvad to keep my IP safe, the risk is still on the table as you are depending on a single entity to protect you on the internet.
+- **Never log in to personal accounts.** Logging in to a personal email or social account ties that whole session to my identity. If I need a fresh identity, I use **New Identity**, which clears state and builds new circuits.
+- **Do not resize the window to unusual dimensions.** Window size used to be a major fingerprinting vector. Tor Browser now uses *letterboxing* (padding the page to standard sizes) to blunt this, but keeping the default window size is still the safest habit.
+- **No extra extensions.** Tor Browser is tuned so all users look alike. Every added extension makes you more unique.
+- **Use HTTPS.** The exit relay can see unencrypted traffic, so HTTPS (or `.onion` services) is essential.
 
-The Tor Network (or the Onion Router) solves this by routing my traffic through three random encrypted relays, called the Guard Node, Middle Node, and the Exit Node. No single relay knows both who I am and what websites I am visiting.
+## Verification
 
-I use the Tor Browser specifically for high risk compartmentalization. It is not a daily driver nor do I pretend it is one just because, I only use it when I need absolute anonymity. The main reason I use it personally is in conjunction with my Cryptocurrency wallets on my TailsOS USB which we will get into later in this stack in the *Financial Privacy* section. It is the only tool I trust to truly keep my wallets anonymous and truly untraceable for defending against malicious actors on the blockchain.
+Visit [check.torproject.org](https://check.torproject.org/). It confirms whether the browser is using Tor.
 
-## Implementation
+## Trade-offs
 
-*  **The Browser:** The Official Tor Browser
+- **Speed.** Three relays around the world will always be slower than a direct or single-hop VPN connection.
+- **CAPTCHAs and blocks.** Because Tor exit IPs are public and shared, services like Google and Cloudflare often challenge or block them.
 
-Here is a link to the download page if you are curious about trying it yourself:
+## Limitations and residual risk
 
-https://torproject.org
+- **Global passive adversaries** that can watch both ends of a connection can attempt traffic correlation. This is explicitly out of scope for my threat model.
+- **Browser exploits** remain the main way Tor users are de-anonymized. The Safest security level reduces that risk significantly.
+- **Behavior matters more than the tool.** Writing style, login habits, and timing can link activity to a person even over Tor.
 
-*  **The Network:** With Tor I often use a bridge in conjunction with it such as **obs4** or **snowflake**,especially if I am on a network which heavily restricts or outright bans access to the Tor Network. What a bridge does is make your traffic look like random noise like a video call for instance to slip by these network wide Tor filters. If you would like to know more about bridges and how they work/function, you can click the link below that I have provided from the official Tor documentation:
+## Verdict
 
-  https://support.torproject.org/tor-browser/circumvention/using-bridges/
+Tor is not about convenience; it is about anonymity. When I need it, I accept the friction and latency that come with it.
 
-*  **Security Level:** The majority of the time I will run the browser on the safest level as it offers the most protection overall, but if anything breaks on a site I may go down a level or two just so it can function accordingly. The safest setting for Tor does block JavaScript by default so this can happen occasionally.
+## Support the Tor Project
 
-## Operational Security Rules
+The Tor network is maintained by a 501(c)(3) non-profit and funded by donations. If you value a free and open internet, consider supporting relay infrastructure and development: **[donate.torproject.org](https://donate.torproject.org)**.
 
-Using Tor correctly is imperative to make your browsing experience on it is truly *private*. These are the rules I follow to make sure my browsing experience stays as private as can be:
+## References
 
-*  **Never log in to personal accounts:** If you were to log into a personal email or social media account on Tor, it will instantly de-anonymize you for the rest of the session you are in and link your identity straight back to your activity. Always make sure that the browsing you do does not link back to you whatsoever.
+- [The Tor Project](https://www.torproject.org/)
+- [Tor Support: Bridges](https://support.torproject.org/tor-browser/circumvention/using-bridges/)
+- [Tor Support: Fingerprinting protections](https://support.torproject.org/tor-browser/features/fingerprinting-protections/)
 
-*   **Never Maximize The Browser Window:** This is a much less known vulnerability with Tor and Tor will warn you about it from time to time. Maximizing the browser window leaks your exact screen resolution, which is a massive way that fingerprinting can occur for the session you are currently in.
+---
 
-*   **No Extra Extensions:** Tor is intended to be used with close to no extensions minus the few the developers throw in there for extra anonymity. Tor Browser is carefully tuned in this way to make everyone look identical which means adding additional extensions will do nothing but ruin your anonymity while browsing.
-
-## Some Trade Offs
-
-*  **Speed:** Because your traffic is going across three different encrypted relays across the world, the Tor network is and will ever be slower than any standard web browser.
-
-*  **Captchas:** Because so many bots and malicious actors use the Tor Browser for illicit activities, companies like Google or Cloudflare will often bombard you with captchas or straight up just not allow you into a site to begin with.
-
-## The Verdict
-
-Tor is not for convenience in the slightest, it is for maximum anonymity and only maximum anonymity. When I need it, I am willing to accept the friction and latency that come with it for that exact reason.
-
-
-
-
+[← Layer 3 overview](./README.md) · [Stack overview](../README.md)
