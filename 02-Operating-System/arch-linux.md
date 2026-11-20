@@ -1,33 +1,74 @@
 # Arch Linux
 
-**Threat Mitigated:** Bloatware, hidden telemetry, unnecessary background services, and vendor lock-in.
+| | |
+| --- | --- |
+| **Layer** | 2 · Operating System |
+| **Status** | ✅ Implemented |
+| **Threats mitigated** | Unnecessary services and packages (attack surface), bundled telemetry, slow security patching |
+| **MITRE ATT&CK** | [T1068](https://attack.mitre.org/techniques/T1068/) Exploitation for Privilege Escalation (fewer vulnerable components) · [T1195](https://attack.mitre.org/techniques/T1195/) Supply Chain Compromise (see limitations) |
+| **Last reviewed** | 2026-11-20 |
 
-## Why is this so important?
+## Why this control exists
 
-Most Linux distributions like Ubuntu or Fedora come with hundreds of pre-installed packages, background services, and configurations that you may never use. Every single one of those packages useful or not is a potential attack vector. If a vulnerability is found in a background service you didn't even know was running in the first place, you may be at risk and not even know it.
+Many mainstream distributions ship with hundreds of preinstalled packages and enabled background services that a given user may never touch. Every one of them is potential attack surface: if a vulnerability is found in a service you did not even know was running, you are exposed without realizing it.
 
-I chose **Arch Linux** because it adheres the principle of simplicity. Arch does not install anything you do not explicitly tell it to install, and as a result you are required to build the system from the ground up.
+I chose **Arch Linux** because it follows a "nothing you did not ask for" philosophy. A base install is deliberately minimal, and you build the system up yourself.
 
-This *minimalism by default* approach means:
+## How it works
 
-**1. Reduced Attack Surface:** If I don't need a Bluetooth daemon, a printing service, or a web browser in the background, then why ever install them in the first place? With Arch I have the power to say no to said services and many more never being on my system to begin with.
+- **Reduced attack surface.** If I do not need a Bluetooth daemon, a print server, or a mail agent, they are never installed in the first place.
+- **Full visibility.** I know what is on the system because I put it there.
+- **No telemetry by default.** Arch ships no data collection. The only usage-statistics tool, `pkgstats`, is opt-in.
+- **Rolling release.** Security fixes and new kernels usually reach me within days of an upstream release, instead of waiting for the next point release of a fixed-release distribution.
+- **The AUR.** The Arch User Repository gives me build scripts (`PKGBUILD`s) for niche security tools I use in school and in my own projects. I can read a `PKGBUILD` before building it.
 
-**2. Absolute Control:** I know exactly what is running on my system at all times as I was the one to put it on there.
+## My implementation
 
-**3. No Telemetry:** Arch has zero telemetry,zero data collection, and zero corporate bloatware because it is built that way from the start.
+- Minimal base install, built up package by package.
+- Official repositories by default; AUR packages only when there is no alternative, and only after reading the `PKGBUILD`.
+- Arch News is checked before every full system upgrade (`sudo pacman -Syu`).
 
-## Implementation
+## Verification
 
-**Rolling Release:** Arch is what is called a *Rolling Release Distribution*. I get the latest security patches and kernel updates within days, or sometimes even hours, of them being released, rather than waiting months for a major OS upgrade.
+```bash
+# Count explicitly installed packages (keep this number small and explainable)
+pacman -Qe | wc -l
 
-**The AUR:** The Arch User Repository, or more commonly known as *The AUR* allows me to install niche security tools I use in my schooling and work directly from source, which I can then audit before compiling.
+# List foreign (AUR / manually installed) packages, which are the ones to scrutinize
+pacman -Qm
 
-## The Trade Off of Arch
+# Services enabled at boot
+systemctl list-unit-files --state=enabled
 
-**Maintenance:** Arch requires attention. You have to read the Arch news before doing a system upgrade via ```sudo pacman -Syu``` occasionally to make sure a package update does not brick your system or if it may require manual intervention on your part.
+# Anything listening on the network
+sudo ss -tulpn
 
-**The Breaking Phase:** Because you have root access to everything, it is incredibly easy to break your system if you type the wrong command with root privileges.For example my first time setting up Arch I messed up the partition tables and only had 64GB of space on my system out of the 4TB I had on my SSD(oops). You are a bound to make mistakes your first time setting it up as it is an extremely advanced Linux distro and requires prior Linux knowledge to set up properly your first time. Consider it a learning experience it will make you better in the long run.
+# Installed packages with known published vulnerabilities (package: arch-audit)
+arch-audit
+```
 
-## The Verdict
+## Trade-offs
 
-Arch is not a distribution meant for beginners to the Linux OS, but for someone who wants a transparent, auditable, and minimal operating system, it is the gold standard when it comes to that. (Unless you want to suffer through LFS of course lol)
+- **Maintenance.** Arch expects attention. Some updates need manual steps, which are announced on Arch News, so I read it before upgrading.
+- **Regressions.** Rolling release means I get new bugs as quickly as I get new fixes.
+- **The learning curve.** With root access to everything, it is easy to break the system. My first install is a good example: I messed up the partition table and ended up with 64 GB usable out of a 4 TB SSD. Arch is not a beginner distribution, and you will make mistakes the first time. Treat them as part of the learning.
+
+## Limitations and residual risk
+
+- **The AUR is not vetted.** AUR packages are user-submitted, and "you can audit it" only helps if you actually do. This risk is real: in July 2025, malicious AUR packages named to look like legitimate browser packages (for example `firefox-patch-bin` and `librewolf-fix-bin`) installed the CHAOS remote access trojan and stayed up for about two days before Arch removed them. My rules: read every `PKGBUILD` and `.install` script, be suspicious of new or renamed `-bin` packages, and prefer official repository packages.
+- **Minimal is not the same as hardened.** A minimal install reduces what can go wrong; the rest of this layer covers hardening what remains.
+
+## Verdict
+
+Arch is not for Linux beginners, but for anyone who wants a transparent, minimal, and fast-patching operating system, it is hard to beat (short of suffering through Linux From Scratch).
+
+## References
+
+- [Arch Linux](https://archlinux.org/)
+- [ArchWiki: Security](https://wiki.archlinux.org/title/Security)
+- [ArchWiki: Arch User Repository](https://wiki.archlinux.org/title/Arch_User_Repository)
+- [aur-general: malicious packages announcement (July 2025)](https://lists.archlinux.org/archives/list/aur-general@lists.archlinux.org/thread/7EZTJXLIAQLARQNTMEW2HBWZYE626IFJ)
+
+---
+
+[← Layer 2 overview](./README.md) · [Stack overview](../README.md)
