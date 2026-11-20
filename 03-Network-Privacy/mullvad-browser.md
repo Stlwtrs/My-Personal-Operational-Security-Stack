@@ -1,45 +1,65 @@
 # Mullvad Browser
 
-**Threat Mitigated:** Browser fingerprinting, canvas tracking, and cross site correlation.
+| | |
+| --- | --- |
+| **Layer** | 3 · Network Privacy |
+| **Status** | ✅ Implemented |
+| **Threats mitigated** | Browser fingerprinting, canvas and font tracking, cross-site correlation |
+| **MITRE ATT&CK** | N/A (tracking and fingerprinting are privacy threats rather than intrusion techniques) |
+| **Last reviewed** | 2026-11-20 |
 
-## Why This Is So Important
+## Why this control exists
 
-Using a VPN hides your IP address, but it does *not* stop websites from tracking your data via your browser's fingerprint. Things such as your screen resolution, fonts, time zone, user agent, and hardware concurrency combine to create an unique profile of your device, or what is also known as its **fingerprint**.
+A VPN hides your IP address, but it does **not** stop websites from recognizing your browser. Screen size, installed fonts, time zone, user agent, graphics rendering, and CPU core count combine into a profile that is often unique to your device: its **fingerprint**.
 
-The **Mullvad Browser**, which is a joint project between the people at Mullvad VPN and the Tor Project, is designed to fix these issues. It takes the privacy hardened engine of the Tor Browser and strips out the Tor network's routing capabilities. This allows you to use it with your regular VPN and also makes the browsing experience much faster, although it is a tad bit less private than Tor.
+**Mullvad Browser** is a joint project between Mullvad VPN and the Tor Project. It takes Tor Browser's anti-fingerprinting work and removes the Tor network, so you can use it with a normal VPN at normal speeds. The strategy is the same as Tor Browser's: **make every user look identical,** so no one stands out.
 
-## Implementation
+## How it works
 
-**Anti-Fingerprinting:** The browser intentionally makes all users look identical. It spoofs your screen resolution, blocks canvas readouts, and standardizes fonts.
+- **Uniform fingerprint.** Letterboxing standardizes the reported window size, canvas readouts are blocked, and fonts are restricted to a standard set.
+- **Private by default.** It runs in private browsing mode, so cookies and site data are cleared when it closes.
+- **No telemetry.** No analytics, crash reports, or calls home.
+- **Preinstalled protections.** It ships with uBlock Origin and NoScript already configured.
 
-**Zero Telemetry:** There is no analytics, no crash reports, and no pings home. It just works.
+## My implementation
 
-**Isolation:** I use Mullvad Browseer specifically for general clear net browsing where I want anti-fingerprinting but do not want the latency of the Tor network. I will also use it on occasion to replace IceCat for some heavily restrictive sites when it comes to LibreJS.
+- I use Mullvad Browser **as shipped**, with no extra extensions and the default settings. Adding extensions or changing preferences makes the fingerprint less uniform and defeats the point.
+- I use it when I want to blend in without the latency of Tor, and when IceCat's LibreJS makes a site unusable.
+- It always runs behind [Mullvad VPN](./vpn.md).
 
-## Why Use This AND IceCat?
+### Why use both Mullvad Browser and IceCat?
 
-You may ask, "Why use both Mullvad Browser and IceCat?" Well each one has its one purpose pertaining to how I am browsing of course:
+They solve different problems:
 
-*  **IceCat:** This is for when I want absolute control over what scripts are running on the websites I visit, such as GitHub for example.
+| | IceCat | Mullvad Browser |
+| --- | --- | --- |
+| Strategy | **Control:** default-deny scripts | **Blend in:** look like every other user |
+| Customization | Heavy (extensions, allow lists) | None, on purpose |
+| Best for | Everyday browsing on sites I trust | Sites that need lots of JavaScript; general anonymity on the clearnet |
 
-*  **Mullvad Browser:** This is for when I want to blend into the crowd and/or IceCat is being funky with the way it is displaying a certain site. When I use Mullvad Browser I do not want to be uniquely identifiable nor do I want to spend time whitelisting scripts, I simply just want to look like a generic user.
+## Verification
 
-## How To Test The Browser's Fingerprinting Resistance
+Test your browser at the EFF's [Cover Your Tracks](https://coveryourtracks.eff.org/). With default settings, Mullvad Browser should present a fingerprint shared by its whole user base rather than a unique one. The Tor Project's [fingerprinting protections guide](https://support.torproject.org/tor-browser/features/fingerprinting-protections/) explains what is being normalized; it applies here because Mullvad Browser is built on the same work.
 
-You can test the browser's fingerprint resistance by visiting the **EFF's** Cover Your Tracks Tool or checking the Tor Project's fingerprinting site at the links below:
+## Trade-offs
 
-**EFF's Official Tool:** https://coveryourtracks.eff.org/
+- **Frequent logins.** Site data is cleared on close, so I log in to sites more often.
+- **Some breakage.** Anti-fingerprinting can slightly slow down or break some web apps.
 
-**A General Guide to Fingerprinting Protections By Tor (these are also applicable here as this browser is a fork of tor):**  https://support.torproject.org/tor-browser/features/fingerprinting-protections/
+## Limitations and residual risk
 
-If you are using Mullvad with the default settings, your fingerprint should appear identical to thousands of other users when you try the test.
+- It is less anonymous than Tor Browser because my traffic exits from a VPN server, which means trusting Mullvad, rather than through three independent relays.
+- Logging in to an account identifies me no matter how uniform the fingerprint is.
 
-## The Trade Off
+## Verdict
 
-*  **Friction With Logging Into Sites:** Because the browser aggressively clears cookies and site data to prevent tracking, you may have to log in to sites more frequently then you may be used to.
+It is the closest you can get to Tor Browser's anti-fingerprinting without using the Tor network, and it pairs perfectly with Mullvad VPN.
 
-*  **Performance:** Anti-fingerprinting and strict blocking can slightly slow down some web apps you come across.
+## References
 
-## The Verdict
+- [Mullvad Browser](https://mullvad.net/en/browser)
+- [EFF: Cover Your Tracks](https://coveryourtracks.eff.org/)
 
-This browser is the closest you can get to Tor's anonymity without actually using the Tor Browser itself. It also perfectly complements a Mullvad VPN geared setup which I adore. Overall it is an amazing choice for a privacy focused browser.
+---
+
+[← Layer 3 overview](./README.md) · [Stack overview](../README.md)
