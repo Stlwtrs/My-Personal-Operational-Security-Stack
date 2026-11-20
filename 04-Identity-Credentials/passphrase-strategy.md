@@ -1,59 +1,86 @@
-# The Passphrase Strategy
+# Passphrase Strategy
 
-**Threat Mitigated:** Brute force attacks, dictionary attacks, credential stuffing, and memory loss or as I like to call it the "Hit by a bus" risk.
+| | |
+| --- | --- |
+| **Layer** | 4 · Identity and Credentials |
+| **Status** | ✅ Implemented |
+| **Threats mitigated** | Brute-force and dictionary attacks, credential stuffing, password reuse |
+| **MITRE ATT&CK** | [T1110.001](https://attack.mitre.org/techniques/T1110/001/) Password Guessing · [T1110.002](https://attack.mitre.org/techniques/T1110/002/) Password Cracking · [T1110.004](https://attack.mitre.org/techniques/T1110/004/) Credential Stuffing |
+| **Last reviewed** | 2026-11-20 |
 
-## Why this is so important
+## Why this control exists
 
-The average person uses an 8 character password with a capital letter and a random symbol, such as "Password1!". A modern GPU can crack that password in less than a fraction of a second. This invites huge risk to the user's accounts and overall security online.
+A typical password looks like `Password1!`: a dictionary word, a capital letter, a digit, and a symbol in predictable places. Cracking tools try exactly these patterns first, so passwords like this fall almost instantly in an offline attack, no matter how "complex" they look.
 
-To defeat modern day brute forcing, you dont need a *complex* password per se, what you need is **high entropy**. Length is exponentially more important than complexity when it comes to passwords in the modern day. I myself use a tiered password strategy, utilizing fully randomized strings of 32-36 characters for my most critical online accounts.
+What defeats cracking is **entropy**, meaning true unpredictability, and the easiest way to get it is **length plus randomness**. What defeats credential stuffing is something different: **uniqueness**. If every account has its own password, a breach of one site reveals nothing about the others.
 
-## Implementation | My Tiered Approach
+## My implementation: a tiered approach
 
-### Tier 1: The "Master Keys"
+### Tier 1: the master keys (memorized)
 
-These passwords are the only ones I have memorized. They protect the rest of my digital life.
+These are the only secrets I memorize. They protect everything else.
 
-*  **LUKS Disk Encryption:** I use a 32-36 character string for my initial passphrase to decrypt my laptops and other devices storage devices. I type it every time I boot my laptop, my desktop PC, etc so it is pretty much muscle memory at this point.I can type the whole string in under five seconds nowadays.
+| Secret | Length | Notes |
+| --- | --- | --- |
+| LUKS disk passphrase | 32–36 random characters | Typed every boot; it is muscle memory, and I can enter it in under five seconds |
+| Vault master password | 32–36 random characters | Unlocks Tier 2 |
+| Phone passcode | ~20–24 characters | A long alphanumeric passcode instead of a PIN or biometrics (see [No Biometrics](./biometrics.md)) |
 
-*  **Offline Bitwarden Vault Master Password:** This unlocks my password vault that provides access to my more complex 48-60 character passwords, again this one is a 32-36 character password. I know having a password that is 48-60 characters completely pointless with today's brute forcing techniques but they protect my most personal accounts so I want to be absolutely sure nobody can get in **no matter what**.
+### Tier 2: the vault (generated, never memorized)
 
-*  **iPhone Passcode:** This password is approx 20-24 characters long, I use a passcode on my phone instead of Face ID or a PIN code as having a complex password provides much higher security than the latter. I also refuse to use biometrics for a plethora of other reasons which are told in the biometrics section.
+Every other account (banking, GitHub, forums, everything) gets a **unique, randomly generated 48–60 character** password stored in my [self-hosted vault](./password-manager.md). I could not memorize these if I tried, and I do not need to.
 
-### Tier 2: The Vault
+## The math
 
-Every other password such as my banking, Github, forums, or literally anything else is stored in my offline, air gapped bitwarden vault. They are all insanely complex passwords that not even I can remember so I set them in the vault for safe keeping, they are all approx. 48-60 characters in length.
+For a password chosen **uniformly at random**, entropy in bits = length × log₂(size of the character set). With an 82-character set (upper- and lowercase letters, digits, and 20 symbols):
 
-## The Mathematics of Brute Forcing
+| Length | Possible combinations | Entropy |
+| --- | --- | --- |
+| 20 | 82²⁰ | ≈ 127 bits |
+| 32 | 82³² | ≈ 203 bits |
+| 36 | 82³⁶ | ≈ 229 bits |
+| 60 | 82⁶⁰ | ≈ 381 bits |
 
-So why such long, complex passwords you say? If a password is fully randomized meaning it has uppercase letters, lowercase letters, numbers, and symbols, a string such as one that is 36 characters in length yields roughly a keyspace of 82^36 possible combinations, giving it the mathematical equivalent of over **200** bits of entropy.
+**What that means in time:** at one **trillion** guesses per second, searching half of the 36-character keyspace (the average for a successful attack) would take on the order of **10⁴⁹ years**. The universe is about 1.4 × 10¹⁰ years old.
 
-Even if an attacker had a super computer capable of trying a trillion times per second, it would take longer than the lifespan of the universe in order to crack it. It is genuinely mathematically impossible with current technology to brute force such a password.
+**A fun (and corrected) thought experiment for 60 characters:** the observable universe contains roughly 10⁸⁰ atoms. If *every atom* were a computer making a billion guesses per second, an exhaustive search would still take around **10¹⁸ years**, about 77 million times the current age of the universe. That is not literally "longer than the heat death of the universe" (heat-death estimates are vastly longer), but it is far beyond anything physically achievable.
 
-### Some Fun Facts About Even LONGER Passwords
+You can reproduce these numbers with a few lines of Python:
 
-For highly sensitive accounts such as the ones in my BitWarden Vault, I often use passwords that are **48-60 characters long**.
+```python
+import math
+bits = 36 * math.log2(82)                            # ≈ 228.9
+years = (82**36 / 2) / 1e12 / 3.156e7                # ≈ 1.2e49 at 10^12 guesses/s
+print(round(bits, 1), f"{years:.1e}")
+```
 
-Just for fun, here is what the math looks like for the higher tier of my password entourage the **60** character passwords.
+### Context that matters more than raw entropy
 
-*  The key space is approximately **82^60** total combinations.
-*  That equates to roughly **380** bits of entropy.
-*  There are an estimated **10^80** atoms in the observable universe.
-*  A 60 character password has more possible combinations than the **number of atoms in the observable universe**. If every atom in the universe was a super computer trying a billion passwords a second, they would still not crack such a password before the heat death of the universe.
+- **Offline vs. online attacks.** These numbers assume an attacker with a copy of the password hash who can guess as fast as their hardware allows. Online attacks against a login page are rate-limited and far slower.
+- **Slow key derivation multiplies the work.** LUKS (Argon2id) and Bitwarden (PBKDF2 or Argon2id) make every guess deliberately expensive, so the real cost is far higher than the table suggests.
+- **Diminishing returns.** Beyond roughly 128 bits, extra length adds no practical security; nothing can search a 2¹²⁸ space. My 48–60 character Tier 2 passwords are overkill. Since the vault generates them, the length costs nothing, but in practice those accounts are protected by being **unique and random**, not by having 381 bits. (Some sites also cap password length, so the generator setting has to adapt.)
+- **The real threats to Tier 2 accounts** are phishing, malware, and server-side breaches, not brute force. That is why [MFA](../06-Mobile-Security/mobile-2fa.md) and domain-matched autofill matter so much.
 
-When you have password managers generating the passwords for you, there is zero reason to not use the maximum length you can. 
+## How I memorize the master keys
 
-## How I Memorize Such Complex Passwords
+Practice and repetition. I type these passphrases at least five times a day, so they have become muscle memory: my fingers know the pattern even if I could not easily recite it. I can type my disk passphrase without looking at the keyboard.
 
-Practice, practice, practice. It's really as easy as that. It is only a matter of **repetition and muscle memory**. Because I type these passwords on the low end at least 5 times a day, my fingers know the pattern even if my brain doesn't recite it. It becomes a physical reflex over time with practice like anything. Even now I can not look at my keyboard at all and put in my encryption passcode flawlessly it's a bit of a skill to be honest lol.
+An alternative worth knowing is the **diceware passphrase**: several random words from a large word list (for example, 7–8 words from the EFF long word list, roughly 90–100 bits). It is much easier to memorize than a random string at strong entropy, but I prefer random strings for my Tier 1 secrets.
 
-## The Trade Off
+## Trade-offs
 
-*  **The Risk:** Because the master passwords are *only* in my head, if I suffer a head injury or worst comes to worst I pass away suddenly, that data and the accounts holding the data are lost for good and will be permanently encrypted and inaccessible to my family.
+- **The risk:** because Tier 1 lives in my head, a head injury or sudden death would make that data permanently inaccessible, including to my family.
+- **The mitigation:** I keep a **sealed physical paper copy** of the master passphrases in a secure offline location. They are never stored digitally, never photographed, and never typed anywhere except where they are used.
 
-*  **The Mitigation:** I maintain a sealed, physical paper copy of the master passwords in a secure offline location. They are never stored digitally, never photographed, and never typed into my computer outside of when they are in use.
+## Verdict
 
-## The Verdict
+The friction of typing a long passphrase is a small price for cryptographic security. If someone gets into an account protected this way by brute force, they should buy a lottery ticket. Actually, maybe not; they used up all their luck.
 
-The friction of typing a long password is a small price to pay for absolute and definite cryptographic security. If anybody gets into your account using these strategies, buy a lottery ticket because the odds are heavily, HEAVILY, against that happening. Or don't maybe it's bad luck lol.
+## References
 
+- [NIST SP 800-63B: Digital Identity Guidelines (Authentication)](https://pages.nist.gov/800-63-4/sp800-63b.html)
+- [EFF: Diceware and the long word list](https://www.eff.org/dice)
+
+---
+
+[← Layer 4 overview](./README.md) · [Stack overview](../README.md)
