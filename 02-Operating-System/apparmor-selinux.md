@@ -1,41 +1,72 @@
-# Mandatory Access Control (MAC)
+# Mandatory Access Control (AppArmor)
 
-**Threat Mitigated:** Zero day application exploits, malicious code execution, and unauthorized file access.
+| | |
+| --- | --- |
+| **Layer** | 2 · Operating System |
+| **Status** | ✅ Implemented |
+| **Threats mitigated** | Exploited applications reading or writing files outside their purpose; post-exploitation access to keys and documents |
+| **MITRE ATT&CK** | [T1005](https://attack.mitre.org/techniques/T1005/) Data from Local System · [T1552.004](https://attack.mitre.org/techniques/T1552/004/) Private Keys · [T1068](https://attack.mitre.org/techniques/T1068/) Exploitation for Privilege Escalation |
+| **Last reviewed** | 2026-11-20 |
 
-## Why is this so important anyways?
+## Why this control exists
 
-Traditional Linux security relies on a system called **Discretionary Access Control (DAC)**. If you run a program as your main user account, that program has access to all your files. If you open a PDF in a vulnerable PDF reader for example and an attacker exploits said vulnerability, they immediately inherit your user privileges, which could potentially be root privileges if worst comes to worst. They can read your SSH keys, your documents, and other sensitive you wouldn't want prying eyes to see.
+Traditional Linux permissions use **Discretionary Access Control (DAC)**: a program runs with the full permissions of the user who started it. If I open a malicious PDF in a vulnerable PDF reader, the attacker who exploits it inherits *my* permissions immediately. They can read my SSH keys, my documents, and anything else I can read.
 
-**Mandatory Access Control (MAC)** solves this by confining applications to their own sandboxes. Even if an attacker compromises a program, MAC prevents that program from accessing files or making network connections outside of its designated profile. In a sense, each program is separated by a giant wall.
+**Mandatory Access Control (MAC)** adds a second, policy-based check that the program cannot override. Even if an attacker fully compromises a confined program, the kernel only allows the files, capabilities, and network access listed in that program's profile.
 
-## Implementation
+## How it works
 
-In the Linux ecosystem, the two main MAC frameworks are **AppArmor**, which is used by default in Ubuntu, Debian, and SUSE distributions, and **SELinux**, used by default in RHEL/Fedora distributions.
+The two main Linux MAC frameworks are:
 
-For my setup personally, I have configured **AppArmor** to run in *enforce* mode.
+| | AppArmor | SELinux |
+| --- | --- | --- |
+| Model | Path-based profiles per program | Label-based policy for the whole system |
+| Default on | Ubuntu, Debian | Fedora, RHEL and derivatives |
+| On Arch | Supported by the official kernel and packages | Requires unofficial (AUR) packages |
+| Learning curve | Moderate | Steep |
 
-*  **Profiles:** I use the standard distribution profiles for all the common apps on my hardware.
+I use **AppArmor**. It is officially supported on Arch, and its per-program, path-based profiles are much easier to read and maintain on a single-user workstation.
 
-*  **Enforce vs. Complain:** Many people using AppArmor leave it in *complain* mode meaning it only logs violations but doesn't block them. I made sure to at the very least run it in the strict *enforce* mode. This means that if a program attempts to access a file it shouldn't, the kernel will instantly shoot down and kill the request.
+Profiles run in one of two modes:
 
-## How to Verify it
+- **Complain:** violations are logged but allowed. This is useful while writing a profile, but it provides no protection.
+- **Enforce:** violations are blocked by the kernel and logged.
 
-To see the status of AppArmor and list all the loaded profiles currently protecting your system, you can use the command:
+## My implementation
 
-```sudo aa-status```
+- AppArmor enabled as a Linux Security Module through the kernel command line (`lsm=` parameter), with `apparmor.service` enabled.
+- The standard profiles shipped with the distribution's packages are loaded.
+- **All loaded profiles run in enforce mode.** I do not leave profiles in complain mode, because a complain-mode profile is only a log.
 
-This will tell you the number of profiles loaded in *enforce* mode and the number loaded in *complain* mode. A properly hardened setup should have zero complaint profiles. If you ever want to check if a specific program has a profile as well, you can always use the command:
+## Verification
 
-```sudo aa-status | grep <app-name>```
+```bash
+aa-enabled                    # "Yes" if AppArmor is active
+sudo aa-status                # profiles loaded, and how many are in enforce vs. complain mode
+sudo aa-status | grep <app>   # does a specific program have a profile?
+sudo aa-unconfined            # network-facing processes that have NO profile
+```
 
-## The Trade Off
+A hardened setup should show **zero profiles in complain mode**. `aa-unconfined` is the honest counterpart: it shows exactly what AppArmor is *not* protecting.
 
-* **The "False Positive" Phase:** When you first enforce a new AppArmor profile, the application might break because it was secretly accessing a file it shouldn't have to begin with, an example of this would be a text editor trying to read your network config which is something it would never need to do. Make sure to spend the time checking your ```dmesg``` and ```journalctl``` logs to see what was blocked and tweak the profile accordingly to your liking.
+## Trade-offs
 
-## The Verdict
+- **The false-positive phase.** When a new profile is enforced, an application can break because it touches files the profile did not anticipate, sometimes legitimately and sometimes not (a text editor has no reason to read network configuration, for example). Check `journalctl` and the audit log for `DENIED` entries, and adjust the profile with `aa-logprof`.
 
-Once the profiles on your system are dialed in and set to the correct settings, it is completely invisible during daily use. But if a zero day were to ever hit a browser or other application which you use, AppArmor will be the wall that stops the attacker from stealing your sensitive info. Think of it as putting each app on an island and putting a mile high wall between each one of those islands. With that kind of defense, no apps can talk to each other whatsoever.
+## Limitations and residual risk
 
+- **AppArmor only confines programs that have a profile.** On a desktop, many applications have no profile and run **unconfined**, with ordinary DAC permissions. AppArmor walls off the profiled programs; it does not automatically put every app on its own island. Expanding profile coverage is ongoing work, and `aa-unconfined` is how I track it.
+- Profiles are only as strict as they are written. An overly broad profile (`/home/** rw`, for example) gives little real protection.
 
-**Here is the link to the official AppArmor documentation if you are interested in trying it yourself:**
-https://www.apparmor.net/
+## Verdict
+
+Once profiles are tuned, AppArmor is invisible in daily use. If a zero-day hits a profiled application, AppArmor is the wall between the attacker and my keys and documents. Knowing which applications are *not* behind that wall is just as important as the wall itself.
+
+## References
+
+- [AppArmor](https://apparmor.net/)
+- [ArchWiki: AppArmor](https://wiki.archlinux.org/title/AppArmor)
+
+---
+
+[← Layer 2 overview](./README.md) · [Stack overview](../README.md)
