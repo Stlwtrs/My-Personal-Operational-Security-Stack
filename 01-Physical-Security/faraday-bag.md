@@ -1,41 +1,63 @@
-# The Faraday Bag (RF Shielding)
+# Faraday Bag (RF Shielding)
 
-**Threat Mitigated:** RF (Radio Frequency) side channel exfiltration, out-of-band wake ups, and unauthorized tracking while the device is powered off.
+| | |
+| --- | --- |
+| **Layer** | 1 · Physical Security |
+| **Status** | ✅ Implemented |
+| **Threats mitigated** | Location tracking and wireless reachability of devices while stored, including phones that keep beaconing after "power off" |
+| **MITRE ATT&CK** | [T1430](https://attack.mitre.org/techniques/T1430/) Location Tracking (Mobile) |
+| **Last reviewed** | 2026-11-20 |
 
-## The "Why" to my methodology
+## Why this control exists
 
-In the cybersecurity community and communities alike, it is a common misconception and dangerous one at that if my laptop is shut down, it is safe. 
+A common and dangerous assumption is that a device that is "off" is silent. That is not always true:
 
-This is unequivocally false. A powered off laptop can still communicate via out-of-band management cycles, like Intel AMT for example. Even if these services are disabled let's say, the hardware can still be theoretically manipulated via RF signals. Furthermore, if malware has previously infected your machine, it can use the devices antennas via Wi-Fi or Bluetooth to exfiltrate data even when the OS is not fully booted up.
+- **Phones.** Apple states that some devices, including iPhone, can keep sending their location to the Find My network for up to 24 hours after being turned off. That helps if the phone is stolen, but it also means a "switched off" phone is not radio-silent.
+- **Laptops.** Business ("vPro") Intel laptops with Intel AMT can be managed out-of-band over the network while the OS is not running. My own laptop has the Intel ME disabled through [HAP mode](./intel-me-hap.md), so this risk is already small for it. The bag is a second layer rather than the primary control.
 
-## What is it?
+A Faraday bag removes the question entirely: whatever the firmware is doing, no radio signal gets in or out.
 
-A Faraday bag is simply a pouch lined with metallic mesh, usually nickel or copper, that blocks all electromagnetic fields. When a device is inside, it is completely invisible to the outside world, or in other words it creates an air gap between your system and the outside world. It cannot send signals, and it cannot receive them.
+## How it works
 
-## Implementation
+A Faraday bag is a pouch lined with conductive metal mesh (usually nickel and copper) that blocks radio-frequency signals. Inside it a device cannot send or receive cellular, Wi-Fi, Bluetooth, NFC, or GPS signals.
 
-**The Gear**: I am currently using a high quality Faraday bag with two layers of shielding for my phone and laptop when I am not using them. They also act as a notification silencer for me while I am in class so I don't get yelled at by the professor lol. The one I currently use is from the company **SLNT** and can be bought at the link here:
+This is **RF isolation**, not a true *air gap*. An air gap means a system never connects to a network at all; a Faraday bag only cuts the radio link while the device is inside it.
 
-**https://slnt.com/**
+## My implementation
 
-**The Day to Day Protocol:** Whenever the laptop or my phone is not in use, it goes directly into my Faraday bag. This is to ensure that number one I am not distracted by it and number two so it is properly air gapped when not in use.
+- **Gear:** a double-layer shielded bag from [SLNT](https://slnt.com/), sized for my laptop and phone.
+- **Daily protocol:** when my phone or laptop is not in use, it goes into the bag. A nice side effect is that it doubles as a notification silencer in class, so my professors stay happy.
 
-## The Verification Test
+## Verification
 
-Don't just trust the bag make sure it actually functions as intended. You should only have to do this one time to make sure it functions as intended:
+Do this when you buy the bag, and repeat it every few months. The mesh wears with folding, and a bag that worked on day one can leak later.
 
-**1.** Turn on your laptop's and/or your phone's Wi-Fi and leave it on.
+1. Leave Wi-Fi and Bluetooth on and make sure the device is connected to a network.
+2. Seal the device fully inside the bag (the roll-top or closure matters).
+3. From another device: call the phone, ping the laptop's IP address, or try a Bluetooth connection.
+4. **Pass:** the call goes straight to voicemail and pings time out. **Fail:** anything gets through.
 
-**2.** Put the laptop and/or your phone inside the Faraday bag and seal it tightly.
+## Trade-offs
 
-**3.** From another device, try to ping the laptop's IP address or send it a file via Bluetooth. You can also try to call it if it has those capabilities such as a phone does.
+- **Heat.** Devices shed heat through their chassis, and a sealed bag traps it like an oven. Let devices cool and **power them off** before bagging them. I learned this the hard way: I once bagged my laptop while it was still running and thought I had destroyed it.
+- **Battery drain.** A phone that is still on inside the bag cannot find a signal and keeps searching at higher transmit power, draining the battery. Powering off first avoids this too.
+- **Convenience.** It adds one physical step when I pack up. For my threat model, a three-second step for that peace of mind is an easy trade.
 
-**4.** If the bag is working correctly, the laptop or your phone will be completely unreachable.
+## Limitations and residual risk
 
-## Some Trade-offs
+- The bag only protects devices **while they are inside it**. It does nothing once the device is in use.
+- It does not protect against an attacker who physically takes the bag.
+- If you rely on remote locate/wipe features to recover a stolen phone, note that a bag blocks those too. Here that is the point, but it is a real trade-off.
 
-Of course there is also trade-offs to using such a piece of hardware. These trade-offs include:
+## Verdict
 
-**Heat:** Laptops, phones,or any other device dissipate heat through their chassis. If you put your device into the sealed bag while it is still running you run the risk of cooking your hardware as Faraday bags trap heat like an oven. Always allow your tech to cool off before you place them in the bag to reduce such a risk. I had this happen one time to my laptop and I thought I destroyed it thank god I didn't lol.
+For my phone, this is a meaningful control against tracking. For my laptop, it is defense in depth on top of HAP mode. Either way, it is cheap, simple, and easy to verify.
 
-**Convenience:** This will also add one extra physical step you need to do when you are packing up to leave to go somewhere, but for a tier two threat model the peace of mind it gives me is enough to be okay with the three second delay it takes to throw it in the bag.
+## References
+
+- [SLNT](https://slnt.com/)
+- [Apple: Find My](https://www.apple.com/icloud/find-my/)
+
+---
+
+[← Layer 1 overview](./README.md) · [Stack overview](../README.md)
