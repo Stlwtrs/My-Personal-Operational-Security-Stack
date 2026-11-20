@@ -1,0 +1,30 @@
+{
+    "autosave": false,
+    "http": {
+        "enabled": false,
+        "host": "127.0.0.1",
+        "port": 0,
+        "access-token": null,
+        "restricted": true
+    },
+    "randomx": {
+        "1gb-pages": false
+    },
+    "cpu": {
+        "enabled": true,
+        "huge-pages": true,
+        "max-threads-hint": 75
+    },
+    "opencl": false,
+    "cuda": false,
+    "donate-level": 1,
+    "pools": [
+        {
+            "url": "POOL_HOST:POOL_TLS_PORT",
+            "user": "YOUR_XMR_ADDRESS",
+            "pass": "x",
+            "keepalive": true,
+            "tls": true
+        }
+    ]
+}
