@@ -43,7 +43,7 @@ For a password chosen **uniformly at random**, entropy in bits = length × log�
 
 **What that means in time:** at one **trillion** guesses per second, searching half of the 36-character keyspace (the average for a successful attack) would take on the order of **10⁴⁹ years**. The universe is about 1.4 × 10¹⁰ years old.
 
-**A fun (and corrected) thought experiment for 60 characters:** the observable universe contains roughly 10⁸⁰ atoms. If *every atom* were a computer making a billion guesses per second, an exhaustive search would still take around **10¹⁸ years**, about 77 million times the current age of the universe. That is not literally "longer than the heat death of the universe" (heat-death estimates are vastly longer), but it is far beyond anything physically achievable.
+**A fun thought experiment for 60 characters:** the observable universe contains roughly 10⁸⁰ atoms. If *every atom* were a computer making a billion guesses per second, an exhaustive search would still take around **10¹⁸ years**, about 77 million times the current age of the universe. That is not "longer than the heat death of the universe" (heat-death estimates are vastly longer), but it is far beyond anything physically achievable.
 
 You can reproduce these numbers with a few lines of Python:
 
