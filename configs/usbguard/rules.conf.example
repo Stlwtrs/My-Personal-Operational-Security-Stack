@@ -1,0 +1,30 @@
+# /etc/usbguard/rules.conf - STRUCTURE EXAMPLE ONLY
+#
+# Do not copy these rules. Generate your own baseline with the devices you trust
+# plugged in, then review it:
+#
+#   sudo sh -c 'usbguard generate-policy > /etc/usbguard/rules.conf'
+#   sudo chmod 0600 /etc/usbguard/rules.conf
+#
+# Real IDs, serials and hashes have been replaced with placeholders.
+# Matching on via-port and with-interface (not just id) makes impersonation harder.
+
+# Internal USB hubs / root hubs
+allow id <VENDOR_ID>:<PRODUCT_ID> serial "<SERIAL>" name "<HUB_NAME>" hash "<HASH>" with-interface 09:00:00
+
+# Keyboard (HID boot keyboard interface 03:01:01)
+allow id <VENDOR_ID>:<PRODUCT_ID> serial "<SERIAL>" name "<KEYBOARD_NAME>" hash "<HASH>" via-port "<PORT>" with-interface 03:01:01
+
+# Mouse / touchpad (HID boot mouse interface 03:01:02)
+allow id <VENDOR_ID>:<PRODUCT_ID> serial "<SERIAL>" name "<MOUSE_NAME>" hash "<HASH>" with-interface 03:01:02
+
+# Hardware security key (FIDO2 keys typically expose a HID interface, sometimes plus CCID 0b:00:00)
+allow id <VENDOR_ID>:<PRODUCT_ID> serial "<SERIAL>" name "<SECURITY_KEY_NAME>" hash "<HASH>" with-interface one-of { 03:00:00 0b:00:00 }
+
+# ---------------------------------------------------------------------------
+# EMERGENCY RECOVERY RULE - DO NOT LEAVE ENABLED
+# Allows ANY keyboard or mouse. A BadUSB device *is* a keyboard, so this rule
+# disables BadUSB protection. Use it only to regain access, then regenerate
+# your policy and delete it.
+# ---------------------------------------------------------------------------
+# allow with-interface one-of { 03:00:01 03:01:01 03:00:02 03:01:02 }
